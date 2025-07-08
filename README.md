@@ -11,16 +11,16 @@ Each folder inside this repo contains:
 
 ##  Projects
 
-| Folder Name            | Sensor/Module             | What it Does                                |
-|------------------------|---------------------------|---------------------------------------------|
-| `led-blink`            | Built in LED              | Blinks the ESP32 onboard LED every second   |
-| `i2c-lcd-display`      | 16x2 I2C LCD              | Displays simple text like "Hello ESP32"     |
-| `dht11-sensor`         | DHT11                     | Shows temperature and humidity              |
-| `ir-sensor`            | IR Obstacle Sensor        | Detects objects in front of the sensor      |
-| `ultrasonic-sensor`    | HC-SR04                   | Measures distance using sound waves         |
-| `connect_esp32_to_wifi`| ESP32 & i2c lcd display   | Scan WiFi SSID and connect to the WiFi      |
-| `wifi-repeater`        | ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
-| `gps-tracker`          | GPS Module (e.g., NEO-6M) | Gets live coordinates on Serial & in dispaly|
+| Folder Name                              | Sensor/Module             | What it Does                                |
+|------------------------------------------|---------------------------|---------------------------------------------|
+| [`led-blink`](./led-blink)               | Built-in LED              | Blinks the ESP32 onboard LED every second   |
+| [`i2c-lcd-display`](./i2c-lcd-display)   | 16x2 I2C LCD              | Displays simple text like "Hello ESP32"     |
+| [`dht11-sensor`](./dht11-sensor)         | DHT11                     | Shows temperature and humidity              |
+| [`ir-sensor`](./ir-sensor)               | IR Obstacle Sensor        | Detects objects in front of the sensor      |
+| [`ultrasonic-sensor`](./ultrasonic-sensor)| HC-SR04                  | Measures distance using sound waves         |
+| [`connect_esp32_to_wifi`](./connect_esp32_to_wifi) | ESP32 & I2C LCD     | Scan WiFi SSID and connect to the WiFi      |
+| [`wifi-repeater`](./wifi-repeater)       | ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
+| [`gps-tracker`](./gps-tracker)           | GPS Module (e.g., NEO-6M) | Gets live coordinates on Serial & in display|
 
 
 ---
@@ -89,11 +89,7 @@ Tools → Port → [Your ESP32 COM Port] (like COM3 or /dev/ttyUSB0)
 
 ---
 
-## Why I Made This
-I'm learning how to use ESP32 with sensors. This repo helps me:
-- Track my learning progress
-- Keep everything in one place
-- Help others who are just getting started
+## Start small, blink bright every big project begins with a single LED.
 
 
 
