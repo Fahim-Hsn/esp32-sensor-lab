@@ -18,9 +18,9 @@ Each folder inside this repo contains:
 | `dht11-sensor`         | DHT11                     | Shows temperature and humidity              |
 | `ir-sensor`            | IR Obstacle Sensor        | Detects objects in front of the sensor      |
 | `ultrasonic-sensor`    | HC-SR04                   | Measures distance using sound waves         |
-| `connect_esp32_to_wifi`| ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
+| `connect_esp32_to_wifi`| ESP32 & i2c lcd display   | Scan WiFi SSID and connect to the WiFi      |
 | `wifi-repeater`        | ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
-| `gps-tracker`          | GPS Module (e.g., NEO-6M) | Gets live GPS coordinates on Serial         |
+| `gps-tracker`          | GPS Module (e.g., NEO-6M) | Gets live coordinates on Serial & in dispaly|
 
 
 ---
@@ -81,7 +81,7 @@ void loop() {
   delay(1000);
 }
 ```
-Upload this code, and your ESP32’s onboard LED should start blinking💡
+Upload this code, and your ESP32’s onboard LED should start blinking
 
 ### Tip:
 Make sure to select the correct COM Port:
