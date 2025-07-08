@@ -11,15 +11,16 @@ Each folder inside this repo contains:
 
 ##  Projects
 
-| Folder Name           | Sensor/Module             | What it Does                                |
-|-----------------------|---------------------------|---------------------------------------------|
-| `led-blink`           | Built in LED              | Blinks the ESP32 onboard LED every second   |
-| `i2c-lcd-display`     | 16x2 I2C LCD              | Displays simple text like "Hello ESP32"     |
-| `dht11-sensor`        | DHT11                     | Shows temperature and humidity              |
-| `ir-sensor`           | IR Obstacle Sensor        | Detects objects in front of the sensor      |
-| `ultrasonic-sensor`   | HC-SR04                   | Measures distance using sound waves         |
-| `wifi-repeater`       | ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
-| `gps-tracker`         | GPS Module (e.g., NEO-6M) | Gets live GPS coordinates on Serial         |
+| Folder Name            | Sensor/Module             | What it Does                                |
+|------------------------|---------------------------|---------------------------------------------|
+| `led-blink`            | Built in LED              | Blinks the ESP32 onboard LED every second   |
+| `i2c-lcd-display`      | 16x2 I2C LCD              | Displays simple text like "Hello ESP32"     |
+| `dht11-sensor`         | DHT11                     | Shows temperature and humidity              |
+| `ir-sensor`            | IR Obstacle Sensor        | Detects objects in front of the sensor      |
+| `ultrasonic-sensor`    | HC-SR04                   | Measures distance using sound waves         |
+| `connect_esp32_to_wifi`| ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
+| `wifi-repeater`        | ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
+| `gps-tracker`          | GPS Module (e.g., NEO-6M) | Gets live GPS coordinates on Serial         |
 
 
 ---
@@ -38,7 +39,7 @@ Each folder inside this repo contains:
 1. Pick any folder (e.g., `dht11-sensor`)
 2. Open the `main.ino` file with Arduino IDE
 3. Upload the code to your ESP32
-4. Connect your components as shown in the wiring diagram (if available)
+4. Connect your components as shown in the wiring diagram (circuit-diagram.png))
 5. Open Serial Monitor or watch output on LCD
 
 ---
