@@ -1,6 +1,6 @@
-# ESP32 Sensor Lab 🔧
+## ESP32 Sensor Lab 
 
-Welcome to the **ESP32 Sensor Lab** – a personal learning collection of beginner-friendly IoT projects using ESP32 and various sensors.
+Welcome to the **ESP32 Sensor Lab** a personal learning collection of beginner friendly IoT projects using ESP32 and various sensors.
 
 Each folder inside this repo contains:
 - Arduino code (`main.ino`)
@@ -43,18 +43,9 @@ Each folder inside this repo contains:
 
 ---
 
-##  Why I Made This
-
-I'm learning how to use ESP32 with sensors. This repo helps me:
-- Track my learning progress
-- Keep everything in one place
-- Help others who are starting like me!
-
----
-
 ##  How to Add ESP32 Board in Arduino IDE
 
-If you're using ESP32 for the first time in Arduino IDE, follow these simple steps:
+If you're using ESP32 for the first time in Arduino IDE follow these simple steps:
 
 ### Step 1: Add Board URL
 
@@ -64,7 +55,6 @@ If you're using ESP32 for the first time in Arduino IDE, follow these simple ste
 https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 4. Click **OK**
 
----
 
 ### Step 2: Install ESP32 Board
 
@@ -72,3 +62,42 @@ https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32
 2. Search for **esp32**
 3. Click **Install** on **"esp32 by Espressif Systems"**
 4. After installation, go to **Tools → Board**, and select:
+
+
+## Quick Test Code (LED Blink)
+
+To test your ESP32 board try this simple blink code:
+
+```cpp
+void setup() {
+  pinMode(2, OUTPUT); // GPIO 2 is usually the built in LED
+}
+
+void loop() {
+  digitalWrite(2, HIGH);
+  delay(1000);
+  digitalWrite(2, LOW);
+  delay(1000);
+}
+```
+Upload this code, and your ESP32’s onboard LED should start blinking💡
+
+### Tip:
+Make sure to select the correct COM Port:
+Tools → Port → [Your ESP32 COM Port] (like COM3 or /dev/ttyUSB0)
+
+---
+
+## Why I Made This
+I'm learning how to use ESP32 with sensors. This repo helps me:
+- Track my learning progress
+- Keep everything in one place
+- Help others who are just getting started
+
+
+
+
+
+
+
+
