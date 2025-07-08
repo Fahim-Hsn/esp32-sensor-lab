@@ -25,7 +25,7 @@ You can try it in two ways:
 
 ### Code
 Click the link below to view the code:
-📎 [View Code (led_blink.ino)](./led_blink.ino) 
+📎 [View Code (led_blink.ino)](./main.ino) 
 
 ### Circuit Diagram
 
