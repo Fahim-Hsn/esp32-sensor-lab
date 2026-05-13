@@ -28,3 +28,4 @@ The project is built using a modern 3-tier architecture:
 3.  Run the server:
     ```bash
     node server.js
+If node server.js doesn't work, then change the dependency in package.json - {"dev": "node server.js"}
