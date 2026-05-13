@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --text: #f8fafc;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-header h2 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        #counter {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+            color: var(--success);
+        }
+
+        .control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        /* Switch Customization */
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #475569;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Button Styling */
+        button {
+            transition: all 0.2s;
+            font-weight: 600;
+            padding: 5px 12px !important;
+        }
+
+        button:hover {
+            background-color: var(--danger) !important;
+            color: white !important;
+        }
+
+        .timestamp {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+
+
+    <div class="dashboard-grid">
+        <!-- D2 LED Control Card (Replacing Manual Override) -->
+        <div class="card">
+            <div class="card-header">
+                <h2>D2 LED CONTROL</h2>
+                <i class="fa-solid fa-lightbulb"></i>
+            </div>
+            <div class="control-group">
+                <span>Power Status</span>
+                <label class="switch">
+                    <input type="checkbox" id="d2Switch" onchange="toggleD2()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <p id="d2Text" style="font-size: 0.8rem; margin-top: 10px; color: var(--text-dim);">LED is currently OFF</p>
+        </div>
+
+        <!-- Counter Card with Reset -->
+        <div class="card">
+            <div class="card-header">
+                <h2>TOTAL DETECTIONS</h2>
+                <button onclick="resetCounter()"
+                    style="background: none; border: 1px solid #ff4c4c; color: #ff4c4c; border-radius: 5px; cursor: pointer; padding: 2px 8px;">Reset</button>
+            </div>
+            <div id="counter">0</div>
+            <div class="timestamp">
+                <i class="fa-regular fa-clock"></i>
+                <span id="statusText">System Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function toggleD2() {
+            const isChecked = document.getElementById('d2Switch').checked;
+            document.getElementById('d2Text').innerText = isChecked ? "LED is currently ON" : "LED is currently OFF";
+
+            await fetch('http://localhost:3000/api/toggle-d2', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: isChecked })
+            });
+        }
+
+        async function resetCounter() {
+            if (confirm("Are you sure you want to reset count?")) {
+                await fetch('http://localhost:3000/api/reset-count', { method: 'POST' });
+                document.getElementById('counter').innerText = "0";
+            }
+        }
+
+        async function refresh() {
+            const res = await fetch('http://localhost:3000/api/get-sensor-data');
+            const data = await res.json();
+            document.getElementById('counter').innerText = data.count;
+            document.getElementById('statusText').innerText = "Last sync: " + data.time;
+        }
+        setInterval(refresh, 1000);
+    </script>
+
+</body>
+
+</html>
