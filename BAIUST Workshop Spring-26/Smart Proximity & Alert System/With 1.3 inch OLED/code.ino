@@ -1,18 +1,21 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 
-// Initialize the 1.3-inch OLED 
+// Initialize the 1.3-inch OLED (SH1106 via I2C)
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
 // Define Hardware Pins
-const int irPin = 13;       
-const int redLed = 14;      
-const int greenLed = 27;    
-const int buzzerPin = 26;   
+const int irPin = 13;        // IR Sensor OUT pin connected to GPIO 13
+const int redLed = 14;       // Red LED connected to GPIO 14
+const int greenLed = 27;     // Green LED connected to GPIO 27
+const int buzzerPin = 26;    // 3-Leg Buzzer Signal (S) pin connected to GPIO 26
 
 // Variables for counting obstacles
 int obstacleCount = 0;
 bool isObstaclePresent = false; 
+
+// Declaration of custom function
+void updateDisplay(String statusText, int count);
 
 void setup() {
   Serial.begin(115200);
@@ -21,12 +24,12 @@ void setup() {
   pinMode(irPin, INPUT);
   pinMode(redLed, OUTPUT);
   pinMode(greenLed, OUTPUT);
-  pinMode(buzzerPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT); // Configure buzzer signal pin as OUTPUT
 
   // Initial State: All OFF
   digitalWrite(redLed, LOW);
   digitalWrite(greenLed, LOW);
-  digitalWrite(buzzerPin, LOW);
+  noTone(buzzerPin);          // Ensure the 3-leg buzzer is completely silent at startup
 
   // Initialize the OLED Display
   u8g2.begin();
@@ -45,7 +48,7 @@ void loop() {
 
   // --- LOGIC BLOCK ---
   if (sensorState == LOW) { 
-    // BADHA PEYECHE (Obstacle Detected)
+    // Obstacle Detected
     
     // Only increase count if this is a NEW obstacle
     if (isObstaclePresent == false) {
@@ -58,26 +61,26 @@ void loop() {
     digitalWrite(greenLed, LOW);
     digitalWrite(redLed, HIGH);
     
-    // Buzzer Beep
-    digitalWrite(buzzerPin, HIGH);
-    delay(100);
-    digitalWrite(buzzerPin, LOW);
-    delay(100);
+    // 3-Leg Buzzer Beep using tone()
+    tone(buzzerPin, 1000);        // Send 1000Hz frequency to generate beep
+    delay(100);                   // Beep for 0.1 seconds
+    noTone(buzzerPin);            // Turn OFF the sound
+    delay(100);                   // Silence for 0.1 seconds
 
     // Update Display for ALERT
     updateDisplay("ALERT!", obstacleCount);
     
   } else {
-    // RASTA FAKA (No Obstacle)
+    // No Obstacle (Path is Clear)
     isObstaclePresent = false; 
 
     digitalWrite(redLed, LOW);
-    digitalWrite(buzzerPin, LOW);
-    digitalWrite(greenLed, HIGH);
+    noTone(buzzerPin);            // Keep the 3-leg buzzer strictly OFF
+    digitalWrite(greenLed, HIGH); 
     
     // Update Display for SAFE
     updateDisplay("CLEAR", obstacleCount);
-    delay(100);
+    delay(100);                   // Small delay to stabilize readings
   }
 }
 
