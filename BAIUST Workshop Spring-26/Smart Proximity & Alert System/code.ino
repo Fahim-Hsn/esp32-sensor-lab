@@ -2,7 +2,7 @@
 const int irPin = 13;       // IR Sensor OUT pin connected to GPIO 13
 const int redLed = 14;      // Red LED connected to GPIO 14
 const int greenLed = 27;    // Green LED connected to GPIO 27
-const int buzzerPin = 26;   // Buzzer connected to GPIO 26
+const int buzzerPin = 26;   // 3-Leg Buzzer Signal (S) pin connected to GPIO 26
 
 void setup() {
   // Start the Serial Monitor to see the output on the computer
@@ -12,12 +12,12 @@ void setup() {
   pinMode(irPin, INPUT);
   pinMode(redLed, OUTPUT);
   pinMode(greenLed, OUTPUT);
-  pinMode(buzzerPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT); // Configure the buzzer signal pin as OUTPUT
 
   // Initial State: Turn everything off
   digitalWrite(redLed, LOW);
   digitalWrite(greenLed, LOW);
-  digitalWrite(buzzerPin, LOW);
+  noTone(buzzerPin);          // Ensure the 3-leg buzzer is quiet at startup
   
   Serial.println("SafeZone System Started!");
 }
@@ -34,18 +34,19 @@ void loop() {
     digitalWrite(greenLed, LOW);  // Turn OFF Green LED
     digitalWrite(redLed, HIGH);   // Turn ON Red LED
     
-    // Create a beeping sound
-    digitalWrite(buzzerPin, HIGH);
-    delay(100);                   // Beep for 0.1 seconds
-    digitalWrite(buzzerPin, LOW);
-    delay(100);                   // Silence for 0.1 seconds
+    // Generate a beeping sound using tone() 
+    // Works perfectly for both Active and Passive 3-leg modules
+    tone(buzzerPin, 1000);        // Send 1000Hz sound frequency to the buzzer
+    delay(100);                   // Keep the sound ON for 0.1 seconds
+    noTone(buzzerPin);            // Turn the sound OFF
+    delay(100);                   // Keep it silent for 0.1 seconds to create the beep effect
     
   } else {
-    // NO OBSTACLE (Rasta Faka)
+    // NO OBSTACLE
     Serial.println("Path is Clear.");
     
     digitalWrite(redLed, LOW);    // Turn OFF Red LED
-    digitalWrite(buzzerPin, LOW); // Turn OFF Buzzer
+    noTone(buzzerPin);            // Ensure the buzzer remains completely OFF
     digitalWrite(greenLed, HIGH); // Turn ON Green LED
     
     delay(200); // Small delay to stabilize readings
