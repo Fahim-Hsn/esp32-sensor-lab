@@ -6,7 +6,7 @@ SafeZone is a smart proximity alert system that monitors its surroundings using 
 
 ##  Features
 * **Real-time Obstacle Detection:** Uses an IR sensor to instantly detect physical objects.
-* **Visual & Audio Alerts:** Triggers a Red LED and an active buzzer when an object is detected.
+* **Visual & Audio Alerts:** Triggers a Red LED and a 3-leg buzzer module (Active/Passive) when an object is detected using frequency-based beeping.
 * **Live OLED Dashboard:** Displays the current system status (CLEAR / ALERT) and maintains a running count of total detections on a 1.3" OLED screen.
 * **Smart Counting (Debouncing):** The system is programmed to only count an object *once* per entry, preventing the counter from rapidly increasing if an object stays still in front of the sensor.
 
@@ -17,7 +17,7 @@ To build this project, you will need the following components:
 1. 1x **ESP32** Development Board
 2. 1x **1.3-inch OLED Display** (I2C, SH1106 Controller)
 3. 1x **IR Obstacle Avoidance Sensor**
-4. 1x **Active Buzzer Module**
+4. 1x **3-Leg Buzzer Module** (Active or Passive)
 5. 1x **Red LED** & 1x **Green LED**
 6. 2x **330Ω Resistors**
 7. 1x Breadboard & Assorted Jumper Wires
@@ -41,9 +41,9 @@ Follow this table to wire your components to the ESP32. **Note:** All GND (Groun
 | | Short Leg (-) | `GND` |
 | **Green LED** | Long Leg (+) | `GPIO 27` *(via 330Ω Resistor)* |
 | | Short Leg (-) | `GND` |
-| **Buzzer** | VCC | `3V3` or `Vin` |
-| | GND | `GND` |
-| | I/O (Signal) | `GPIO 26` |
+| **3-Leg Buzzer Module** | VCC / (+) | `3V3` or `5V` |
+| | GND / (-) | `GND` |
+| | I/O / S (Signal) | `GPIO 26` |
 
 ---
 
