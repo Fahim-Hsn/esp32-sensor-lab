@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-S3 Type-C Web Serial Viewer</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.4);
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --panel-width: 330px;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    body {
+      background: radial-gradient(circle at top right, #1e293b, #090d16 70%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .badge-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #3b82f6, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+    .badge-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #fff;
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      transition: all 0.3s ease;
+    }
+    .status-badge.connected {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .main-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr var(--panel-width);
+      gap: 24px;
+      padding: 24px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    @media (max-width: 992px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .viewport-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+    .stream-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      max-height: 70vh;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .stream-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .placeholder-msg {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-muted);
+    }
+    .placeholder-msg svg {
+      width: 56px;
+      height: 56px;
+      stroke: var(--text-muted);
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+    .overlay-hud {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    .hud-pill {
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .viewport-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      color: #fff;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #1d4ed8);
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--accent-hover), #1e40af);
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background: #dc2626;
+    }
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+      transform: translateY(-1px);
+    }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 18px;
+      backdrop-filter: blur(16px);
+    }
+    .panel-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .control-row {
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .control-row:last-child {
+      margin-bottom: 0;
+    }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .control-val {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    select, input[type="range"] {
+      width: 100%;
+    }
+    select {
+      background: rgba(11, 15, 25, 0.8);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+    select:focus {
+      border-color: var(--accent);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 0.85rem;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 42px;
+      height: 22px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .3s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .info-box {
+      background: rgba(0,0,0,0.3);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .info-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .info-value {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="badge-icon">
+        <svg viewBox="0 0 24 24"><path d="M15 7v4h1v2h-1v4h-2v-4h-2v4H9v-4H8v-2h1V7h2v4h2V7h2m1-5H8c-1.1 0-2 .9-2 2v1h12V4c0-1.1-.9-2-2-2M8 22h8c1.1 0 2-.9 2-2v-1H6v1c0 1.1.9 2 2 2z"/></svg>
+      </div>
+      <div>
+        <div class="brand-title">ESP32-S3 Type-C Web Viewer</div>
+        <div class="brand-subtitle">High Speed Direct USB Web Serial Camera Interface</div>
+      </div>
+    </div>
+    <div class="status-badge" id="status-badge">
+      <span class="pulse-dot"></span>
+      <span id="conn-status-text">DISCONNECTED</span>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <div class="viewport-card">
+      <div class="stream-container" id="stream-box">
+        <div class="overlay-hud" id="hud" style="display: none;">
+          <div class="hud-pill" id="hud-fps">0 FPS</div>
+          <div class="hud-pill" id="hud-rate">0 KB/s</div>
+        </div>
+        <img id="stream-view" style="display: none;" alt="ESP32 Stream">
+        <div class="placeholder-msg" id="placeholder-box">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <h3>Camera is Not Connected</h3>
+          <p style="margin-top: 6px; font-size: 0.85rem;">Click "Connect Type-C ESP32" below and select your COM Port to start the live video feed.</p>
+        </div>
+      </div>
+
+      <div class="viewport-actions">
+        <button class="btn btn-primary" id="connect-btn" onclick="toggleConnection()">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+          Connect Type-C ESP32
+        </button>
+        <button class="btn btn-secondary" onclick="captureSnapshot()">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          Capture Snapshot
+        </button>
+        <button class="btn btn-secondary" onclick="toggleFullscreen()">
+          Fullscreen
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel">
+        <div class="panel-title">Serial Camera Controls</div>
+        
+        <div class="control-row">
+          <div class="control-header">
+            <span>Resolution</span>
+          </div>
+          <select id="framesize" onchange="sendCmd('R' + this.value)">
+            <option value="13">UXGA (1600x1200)</option>
+            <option value="12">SXGA (1280x1024)</option>
+            <option value="10">XGA (1024x768)</option>
+            <option value="9">SVGA (800x600)</option>
+            <option value="8" selected>VGA (640x480)</option>
+            <option value="6">CIF (400x296)</option>
+            <option value="5">QVGA (320x240)</option>
+          </select>
+        </div>
+
+        <div class="control-row">
+          <div class="control-header">
+            <span>Quality (Compression)</span>
+            <span class="control-val" id="val-quality">14</span>
+          </div>
+          <input type="range" id="quality" min="10" max="63" value="14" oninput="sendCmd('Q' + this.value); document.getElementById('val-quality').innerText = this.value">
+        </div>
+
+        <div class="control-row">
+          <div class="control-header">
+            <span>Brightness</span>
+            <span class="control-val" id="val-brightness">0</span>
+          </div>
+          <input type="range" id="brightness" min="-2" max="2" value="0" oninput="sendCmd('B' + this.value); document.getElementById('val-brightness').innerText = this.value">
+        </div>
+
+        <div class="control-row">
+          <div class="control-header">
+            <span>Contrast</span>
+            <span class="control-val" id="val-contrast">0</span>
+          </div>
+          <input type="range" id="contrast" min="-2" max="2" value="0" oninput="sendCmd('C' + this.value); document.getElementById('val-contrast').innerText = this.value">
+        </div>
+
+        <div class="toggle-row">
+          <span>Vertical Flip (V-Flip)</span>
+          <label class="switch">
+            <input type="checkbox" onchange="sendCmd('F' + (this.checked ? '1' : '0'))">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <span>Horizontal Mirror (H-Mirror)</span>
+          <label class="switch">
+            <input type="checkbox" onchange="sendCmd('M' + (this.checked ? '1' : '0'))">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Stream Statistics</div>
+        <div class="info-grid">
+          <div class="info-box">
+            <div class="info-label">BAUD RATE</div>
+            <div class="info-value">921,600</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">FRAME RATE</div>
+            <div class="info-value" id="stat-fps">0 FPS</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">DATA THROUGHPUT</div>
+            <div class="info-value" id="stat-kbps">0 KB/s</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">LAST FRAME SIZE</div>
+            <div class="info-value" id="stat-size">0 KB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let port = null;
+    let reader = null;
+    let writer = null;
+    let isConnected = false;
+    let keepReading = false;
+
+    const streamImg = document.getElementById('stream-view');
+    const placeholder = document.getElementById('placeholder-box');
+    const hud = document.getElementById('hud');
+    const connectBtn = document.getElementById('connect-btn');
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('conn-status-text');
+
+    // FPS and Throughput stats
+    let frameCount = 0;
+    let totalBytes = 0;
+    let lastStatTime = performance.now();
+
+    async function toggleConnection() {
+      if (isConnected) {
+        await disconnect();
+      } else {
+        await connect();
+      }
+    }
+
+    async function connect() {
+      if (!('serial' in navigator)) {
+        alert("Web Serial API is not supported in this browser. Please open this file in Google Chrome, Microsoft Edge, or Opera.");
+        return;
+      }
+
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 921600, bufferSize: 1024 * 1024 });
+
+        writer = port.writable.getWriter();
+        isConnected = true;
+        keepReading = true;
+
+        statusBadge.classList.add('connected');
+        statusText.innerText = "STREAMING (TYPE-C)";
+        connectBtn.innerHTML = `Disconnect Type-C`;
+        connectBtn.classList.remove('btn-primary');
+        connectBtn.classList.add('btn-danger');
+
+        placeholder.style.display = 'none';
+        streamImg.style.display = 'block';
+        hud.style.display = 'flex';
+
+        readSerialStream();
+      } catch (err) {
+        console.error("Connection failed:", err);
+        alert("Failed to open serial port: " + err.message);
+      }
+    }
+
+    async function disconnect() {
+      keepReading = false;
+      if (reader) {
+        await reader.cancel();
+      }
+      if (writer) {
+        await writer.releaseLock();
+      }
+      if (port) {
+        await port.close();
+      }
+
+      isConnected = false;
+      statusBadge.classList.remove('connected');
+      statusText.innerText = "DISCONNECTED";
+      connectBtn.innerHTML = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> Connect Type-C ESP32`;
+      connectBtn.classList.add('btn-primary');
+      connectBtn.classList.remove('btn-danger');
+
+      placeholder.style.display = 'block';
+      streamImg.style.display = 'none';
+      hud.style.display = 'none';
+    }
+
+    async function sendCmd(cmd) {
+      if (!isConnected || !writer) return;
+      try {
+        const encoder = new TextEncoder();
+        await writer.write(encoder.encode(cmd + "\n"));
+      } catch (e) {
+        console.error("Failed to send command:", e);
+      }
+    }
+
+    // High performance stream parser
+    async function readSerialStream() {
+      reader = port.readable.getReader();
+      let buffer = new Uint8Array(0);
+
+      const HEADER = [0xAA, 0x55, 0xAA, 0x55];
+      let lastObjectUrl = null;
+
+      try {
+        while (keepReading) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+
+          totalBytes += value.length;
+
+          // Append incoming chunk to accumulator buffer
+          const newBuf = new Uint8Array(buffer.length + value.length);
+          newBuf.set(buffer);
+          newBuf.set(value, buffer.length);
+          buffer = newBuf;
+
+          // Parse frames
+          while (buffer.length >= 8) {
+            // Find header
+            let headerIdx = -1;
+            for (let i = 0; i <= buffer.length - 4; i++) {
+              if (buffer[i] === HEADER[0] &&
+                  buffer[i+1] === HEADER[1] &&
+                  buffer[i+2] === HEADER[2] &&
+                  buffer[i+3] === HEADER[3]) {
+                headerIdx = i;
+                break;
+              }
+            }
+
+            if (headerIdx === -1) {
+              // Header not found yet, keep only last 3 bytes in case header spans chunk boundary
+              buffer = buffer.slice(Math.max(0, buffer.length - 3));
+              break;
+            }
+
+            // If header is not at 0, drop corrupted bytes before header
+            if (headerIdx > 0) {
+              buffer = buffer.slice(headerIdx);
+            }
+
+            // Need at least 8 bytes for Header (4) + Length (4)
+            if (buffer.length < 8) break;
+
+            const payloadLen = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
+            const fullPacketLen = 8 + payloadLen + 2; // header + len + payload + footer
+
+            if (buffer.length < fullPacketLen) {
+              // Incomplete frame, wait for more data
+              break;
+            }
+
+            // Extract JPEG payload
+            const jpegBytes = buffer.slice(8, 8 + payloadLen);
+            buffer = buffer.slice(fullPacketLen);
+
+            // Render Frame
+            const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
+            if (lastObjectUrl) {
+              URL.revokeObjectURL(lastObjectUrl);
+            }
+            lastObjectUrl = URL.createObjectURL(blob);
+            streamImg.src = lastObjectUrl;
+
+            frameCount++;
+            document.getElementById('stat-size').innerText = (payloadLen / 1024).toFixed(1) + ' KB';
+
+            // Update stats every 1 second
+            const now = performance.now();
+            if (now - lastStatTime >= 1000) {
+              const elapsedSec = (now - lastStatTime) / 1000;
+              const fps = Math.round(frameCount / elapsedSec);
+              const kbps = Math.round((totalBytes / 1024) / elapsedSec);
+
+              document.getElementById('hud-fps').innerText = `${fps} FPS`;
+              document.getElementById('hud-rate').innerText = `${kbps} KB/s`;
+              document.getElementById('stat-fps').innerText = `${fps} FPS`;
+              document.getElementById('stat-kbps').innerText = `${kbps} KB/s`;
+
+              frameCount = 0;
+              totalBytes = 0;
+              lastStatTime = now;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Serial reader error/aborted:", err);
+      } finally {
+        if (reader) {
+          reader.releaseLock();
+        }
+      }
+    }
+
+    function captureSnapshot() {
+      if (!streamImg.src) return;
+      const link = document.createElement('a');
+      link.href = streamImg.src;
+      link.download = `esp32s3_typec_snap_${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function toggleFullscreen() {
+      const box = document.getElementById('stream-box');
+      if (!document.fullscreenElement) {
+        box.requestFullscreen().catch(err => alert(`Fullscreen error: ${err.message}`));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+  </script>
+</body>
+</html>

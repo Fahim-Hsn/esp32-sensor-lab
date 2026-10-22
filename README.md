@@ -21,6 +21,7 @@ Each folder inside this repo contains:
 | [`connect_esp32_to_wifi`](./connect_esp32_to_wifi) | ESP32 & I2C LCD     | Scan WiFi SSID and connect to the WiFi      |
 | [`wifi-repeater`](./wifi-repeater)       | ESP32 WiFi                | Repeats WiFi signal like a mini extender    |
 | [`gps-tracker`](./gps-tracker)           | GPS Module (e.g., NEO-6M) | Gets live coordinates on Serial & in display|
+| [`esp32s3_cam_config`](./esp32s3_cam_config) | ESP32-S3 CAM (OV2640/OV3660/OV5640) | Wi-Fi SoftAP and Type-C Web Serial camera streaming |
 
 
 ---
