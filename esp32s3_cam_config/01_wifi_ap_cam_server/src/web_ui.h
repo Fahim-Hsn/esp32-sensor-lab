@@ -1,17 +1,17 @@
 #pragma once
 
-// High-performance, modern Glassmorphism Web Dashboard for ESP32-S3 CAM
+// Ultra-fast, responsive Glassmorphism Web Dashboard for ESP32-S3 CAM
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ESP32-S3 CAM Studio</title>
   <style>
     :root {
       --bg: #0b0f19;
-      --card-bg: rgba(22, 27, 46, 0.7);
+      --card-bg: rgba(22, 27, 46, 0.85);
       --card-border: rgba(255, 255, 255, 0.08);
       --accent: #6366f1;
       --accent-glow: rgba(99, 102, 241, 0.4);
@@ -19,7 +19,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       --success: #10b981;
       --text: #f3f4f6;
       --text-muted: #9ca3af;
-      --panel-width: 340px;
+      --panel-width: 320px;
     }
     * {
       box-sizing: border-box;
@@ -28,19 +28,19 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     body {
-      background: radial-gradient(circle at top right, #1e1b4b, #0b0f19 60%);
+      background: radial-gradient(circle at top right, #1e1b4b, #0b0f19 70%);
       color: var(--text);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
     header {
-      padding: 16px 28px;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--card-border);
-      background: rgba(11, 15, 25, 0.85);
+      background: rgba(11, 15, 25, 0.95);
       backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
@@ -49,12 +49,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     .badge-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
       background: linear-gradient(135deg, #6366f1, #a855f7);
       display: flex;
       align-items: center;
@@ -62,37 +62,37 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       box-shadow: 0 4px 15px var(--accent-glow);
     }
     .badge-icon svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: #fff;
     }
     .brand-title {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 700;
       letter-spacing: -0.02em;
     }
     .brand-subtitle {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
     }
     .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: rgba(16, 185, 129, 0.15);
       color: var(--success);
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 0.75rem;
       font-weight: 600;
       border: 1px solid rgba(16, 185, 129, 0.3);
     }
     .pulse-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--success);
-      box-shadow: 0 0 10px var(--success);
+      box-shadow: 0 0 8px var(--success);
       animation: pulse 1.8s infinite;
     }
     @keyframes pulse {
@@ -103,34 +103,34 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       flex: 1;
       display: grid;
       grid-template-columns: 1fr var(--panel-width);
-      gap: 24px;
-      padding: 24px;
-      max-width: 1600px;
+      gap: 20px;
+      padding: 18px;
+      max-width: 1400px;
       margin: 0 auto;
       width: 100%;
     }
-    @media (max-width: 992px) {
+    @media (max-width: 860px) {
       .main-layout {
         grid-template-columns: 1fr;
+        padding: 12px;
       }
     }
     .viewport-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 20px;
+      border-radius: 14px;
+      padding: 16px;
       backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
     .stream-container {
       position: relative;
       width: 100%;
       aspect-ratio: 4 / 3;
-      max-height: 70vh;
+      max-height: 65vh;
       background: #000;
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
       display: flex;
       align-items: center;
@@ -141,53 +141,51 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       width: 100%;
       height: 100%;
       object-fit: contain;
-      transition: filter 0.2s ease;
     }
     .overlay-hud {
       position: absolute;
-      top: 14px;
-      left: 14px;
+      top: 10px;
+      left: 10px;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       z-index: 10;
     }
     .hud-pill {
-      background: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(8px);
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
       font-weight: 600;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       border: 1px solid rgba(255,255,255,0.1);
     }
     .viewport-actions {
       display: flex;
-      gap: 12px;
-      margin-top: 16px;
+      gap: 10px;
+      margin-top: 14px;
       flex-wrap: wrap;
     }
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-size: 0.85rem;
+      gap: 6px;
+      padding: 9px 15px;
+      border-radius: 8px;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       border: none;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s ease;
       color: #fff;
     }
     .btn-primary {
       background: linear-gradient(135deg, var(--accent), #4338ca);
-      box-shadow: 0 4px 14px var(--accent-glow);
+      box-shadow: 0 4px 12px var(--accent-glow);
     }
     .btn-primary:hover {
       background: linear-gradient(135deg, var(--accent-hover), #3730a3);
-      transform: translateY(-1px);
     }
     .btn-secondary {
       background: rgba(255, 255, 255, 0.08);
@@ -195,36 +193,35 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     }
     .btn-secondary:hover {
       background: rgba(255, 255, 255, 0.14);
-      transform: translateY(-1px);
     }
     .sidebar {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
     .panel {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 18px;
+      border-radius: 12px;
+      padding: 16px;
       backdrop-filter: blur(16px);
     }
     .panel-title {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       color: var(--text-muted);
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     .control-row {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
     .control-row:last-child {
       margin-bottom: 0;
@@ -232,7 +229,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     .control-header {
       display: flex;
       justify-content: space-between;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 500;
     }
     .control-val {
@@ -243,12 +240,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       width: 100%;
     }
     select {
-      background: rgba(11, 15, 25, 0.8);
+      background: rgba(11, 15, 25, 0.85);
       border: 1px solid var(--card-border);
       color: var(--text);
-      padding: 9px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
       outline: none;
       cursor: pointer;
     }
@@ -258,32 +255,32 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.1);
+      height: 5px;
+      background: rgba(255, 255, 255, 0.12);
       border-radius: 4px;
       outline: none;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
       border-radius: 50%;
       background: var(--accent);
       cursor: pointer;
-      box-shadow: 0 0 10px var(--accent-glow);
+      box-shadow: 0 0 8px var(--accent-glow);
     }
     .toggle-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 0;
-      font-size: 0.85rem;
+      padding: 5px 0;
+      font-size: 0.8rem;
     }
     .switch {
       position: relative;
       display: inline-block;
-      width: 42px;
-      height: 22px;
+      width: 38px;
+      height: 20px;
     }
     .switch input {
       opacity: 0;
@@ -295,44 +292,44 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
       background-color: rgba(255, 255, 255, 0.15);
-      transition: .3s;
-      border-radius: 24px;
+      transition: .25s;
+      border-radius: 20px;
     }
     .slider:before {
       position: absolute;
       content: "";
-      height: 16px;
-      width: 16px;
+      height: 14px;
+      width: 14px;
       left: 3px;
       bottom: 3px;
       background-color: white;
-      transition: .3s;
+      transition: .25s;
       border-radius: 50%;
     }
     input:checked + .slider {
       background-color: var(--accent);
     }
     input:checked + .slider:before {
-      transform: translateX(20px);
+      transform: translateX(18px);
     }
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 8px;
     }
     .info-box {
       background: rgba(0,0,0,0.3);
-      padding: 10px;
-      border-radius: 8px;
+      padding: 8px;
+      border-radius: 6px;
       border: 1px solid rgba(255,255,255,0.04);
     }
     .info-label {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
       margin-bottom: 2px;
     }
     .info-value {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: #fff;
     }
@@ -346,7 +343,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       </div>
       <div>
         <div class="brand-title">ESP32-S3 CAM Studio</div>
-        <div class="brand-subtitle">Freenove N16R8 High Performance Wi-Fi AP Streamer</div>
+        <div class="brand-subtitle">High-Speed Dedicated Stream Engine</div>
       </div>
     </div>
     <div class="status-badge">
@@ -359,14 +356,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="viewport-card">
       <div class="stream-container" id="stream-box">
         <div class="overlay-hud">
-          <div class="hud-pill" id="hud-fps">-- FPS</div>
+          <div class="hud-pill" id="hud-port">PORT: 81 (ISOLATED)</div>
           <div class="hud-pill" id="hud-res">VGA (640x480)</div>
         </div>
-        <img id="stream-view" src="/stream" alt="ESP32 Live Stream" crossorigin="anonymous">
+        <img id="stream-view" alt="ESP32 Stream">
       </div>
       <div class="viewport-actions">
         <button class="btn btn-primary" onclick="captureSnapshot()">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
           Capture Snapshot
         </button>
         <button class="btn btn-secondary" id="toggle-stream-btn" onclick="toggleStream()">
@@ -401,10 +398,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         <div class="control-row">
           <div class="control-header">
-            <span>Quality (JPEG Compression)</span>
-            <span class="control-val" id="val-quality">12</span>
+            <span>Quality (Compression)</span>
+            <span class="control-val" id="val-quality">14</span>
           </div>
-          <input type="range" id="quality" min="10" max="63" value="12" oninput="updateParam('quality', this.value); document.getElementById('val-quality').innerText = this.value">
+          <input type="range" id="quality" min="10" max="63" value="14" oninput="updateParam('quality', this.value); document.getElementById('val-quality').innerText = this.value">
         </div>
 
         <div class="control-row">
@@ -421,29 +418,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <span class="control-val" id="val-contrast">0</span>
           </div>
           <input type="range" id="contrast" min="-2" max="2" value="0" oninput="updateParam('contrast', this.value); document.getElementById('val-contrast').innerText = this.value">
-        </div>
-
-        <div class="control-row">
-          <div class="control-header">
-            <span>Saturation</span>
-            <span class="control-val" id="val-saturation">0</span>
-          </div>
-          <input type="range" id="saturation" min="-2" max="2" value="0" oninput="updateParam('saturation', this.value); document.getElementById('val-saturation').innerText = this.value">
-        </div>
-
-        <div class="control-row">
-          <div class="control-header">
-            <span>Special Effect</span>
-          </div>
-          <select id="special_effect" onchange="updateParam('special_effect', this.value)">
-            <option value="0" selected>Normal</option>
-            <option value="1">Negative</option>
-            <option value="2">Grayscale</option>
-            <option value="3">Red Tint</option>
-            <option value="4">Green Tint</option>
-            <option value="5">Blue Tint</option>
-            <option value="6">Sepia</option>
-          </select>
         </div>
 
         <div class="toggle-row">
@@ -464,11 +438,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       </div>
 
       <div class="panel">
-        <div class="panel-title">System Diagnostics</div>
+        <div class="panel-title">
+          <span>Diagnostics</span>
+          <button style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:0.7rem;" onclick="fetchDiagnostics()">Refresh</button>
+        </div>
         <div class="info-grid">
           <div class="info-box">
             <div class="info-label">SENSOR</div>
-            <div class="info-value" id="diag-sensor">Detecting...</div>
+            <div class="info-value" id="diag-sensor">Loading...</div>
           </div>
           <div class="info-box">
             <div class="info-label">FREE PSRAM</div>
@@ -479,7 +456,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <div class="info-value" id="diag-heap">-- KB</div>
           </div>
           <div class="info-box">
-            <div class="info-label">AP IP ADDRESS</div>
+            <div class="info-label">HOTSPOT IP</div>
             <div class="info-value">192.168.4.1</div>
           </div>
         </div>
@@ -491,8 +468,19 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     const streamImg = document.getElementById('stream-view');
     let isStreaming = true;
 
+    // Stream runs on isolated Port 81 so it never blocks web controls or captive portal
+    const streamHost = 'http://' + window.location.hostname + ':81/stream';
+
+    function startStream() {
+      streamImg.src = streamHost + '?t=' + Date.now();
+      isStreaming = true;
+      document.getElementById('toggle-stream-btn').innerText = 'Pause Stream';
+      document.getElementById('stream-status').innerText = 'STREAM ACTIVE';
+      document.getElementById('stream-status').parentElement.style.color = '#10b981';
+    }
+
     function updateParam(param, val) {
-      fetch(`/control?var=${param}&val=${val}`)
+      fetch('/control?var=' + param + '&val=' + val)
         .then(r => r.json())
         .then(d => {
           if (param === 'framesize') {
@@ -500,7 +488,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('hud-res').innerText = sel.options[sel.selectedIndex].text.split(' ')[0];
           }
         })
-        .catch(e => console.error("Control error:", e));
+        .catch(e => console.warn("Param update warning:", e));
     }
 
     function toggleStream() {
@@ -513,11 +501,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         status.innerText = 'STREAM PAUSED';
         status.parentElement.style.color = '#ef4444';
       } else {
-        streamImg.src = '/stream?' + new Date().getTime();
-        isStreaming = true;
-        btn.innerText = 'Pause Stream';
-        status.innerText = 'STREAM ACTIVE';
-        status.parentElement.style.color = '#10b981';
+        startStream();
       }
     }
 
@@ -533,13 +517,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     function toggleFullscreen() {
       const box = document.getElementById('stream-box');
       if (!document.fullscreenElement) {
-        box.requestFullscreen().catch(err => alert(`Fullscreen error: ${err.message}`));
+        box.requestFullscreen().catch(err => alert(err.message));
       } else {
         document.exitFullscreen();
       }
     }
 
-    // Diagnostics poller
     function fetchDiagnostics() {
       fetch('/status')
         .then(res => res.json())
@@ -551,22 +534,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         .catch(() => {});
     }
 
-    // Simple FPS Estimator
-    let frameCount = 0;
-    let lastTime = performance.now();
-    streamImg.onload = () => {
-      frameCount++;
-      const now = performance.now();
-      if (now - lastTime >= 1000) {
-        const fps = Math.round((frameCount * 1000) / (now - lastTime));
-        document.getElementById('hud-fps').innerText = `${fps} FPS`;
-        frameCount = 0;
-        lastTime = now;
-      }
-    };
-
-    fetchDiagnostics();
-    setInterval(fetchDiagnostics, 3000);
+    // Start stream immediately on load
+    window.addEventListener('DOMContentLoaded', () => {
+      startStream();
+      fetchDiagnostics();
+    });
   </script>
 </body>
 </html>

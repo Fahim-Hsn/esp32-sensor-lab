@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <DNSServer.h>
 #include "esp_camera.h"
 #include "esp_http_server.h"
 #include "camera_pins.h"
@@ -7,10 +8,13 @@
 
 // Access Point Settings
 const char* AP_SSID = "ESP32S3-CAM-AP";
-const char* AP_PASS = ""; // Open AP (no password needed)
+const char* AP_PASS = ""; // Open AP (instant connection)
 
-httpd_handle_t stream_httpd = NULL;
+DNSServer dnsServer;
+const byte DNS_PORT = 53;
+
 httpd_handle_t camera_httpd = NULL;
+httpd_handle_t stream_httpd = NULL;
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
@@ -22,7 +26,16 @@ String detected_sensor_name = "Unknown Sensor";
 // Handler for root page
 static esp_err_t index_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
     return httpd_resp_send(req, INDEX_HTML, HTTPD_RESP_USE_STRLEN);
+}
+
+// Captive Portal probe redirect handler (Android, iOS, Windows)
+static esp_err_t captive_portal_redirect(httpd_req_t *req) {
+    httpd_resp_set_status(req, "302 Found");
+    httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/");
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
 }
 
 // Handler for single snapshot capture
@@ -43,7 +56,7 @@ static esp_err_t capture_handler(httpd_req_t *req) {
     return res;
 }
 
-// Handler for live MJPEG video stream
+// Dedicated Handler for live MJPEG video stream (Runs exclusively on Port 81)
 static esp_err_t stream_handler(httpd_req_t *req) {
     camera_fb_t *fb = NULL;
     esp_err_t res = ESP_OK;
@@ -52,13 +65,15 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
     if (res != ESP_OK) return res;
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_set_hdr(req, "X-Framerate", "30");
 
     while (true) {
+        int64_t fr_start = esp_timer_get_time();
+
         fb = esp_camera_fb_get();
         if (!fb) {
-            Serial.println("[ERROR] Failed to get camera frame buffer");
-            res = ESP_FAIL;
-            break;
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
         }
 
         size_t hlen = snprintf(part_buf, 64, _STREAM_PART, fb->len);
@@ -75,6 +90,16 @@ static esp_err_t stream_handler(httpd_req_t *req) {
 
         if (res != ESP_OK) {
             break;
+        }
+
+        int64_t fr_ready = esp_timer_get_time();
+        int64_t elapsed_ms = (fr_ready - fr_start) / 1000;
+
+        // Frame pacing: Yield CPU and maintain smooth ~30 FPS without choking Wi-Fi TCP buffers
+        if (elapsed_ms < 33) {
+            vTaskDelay(pdMS_TO_TICKS(33 - elapsed_ms));
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(2));
         }
     }
     return res;
@@ -143,9 +168,15 @@ static esp_err_t status_handler(httpd_req_t *req) {
 }
 
 void startCameraServer() {
+    // -------------------------------------------------------------
+    // SERVER 1: Main Control & Web UI Server (Port 80)
+    // -------------------------------------------------------------
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
     config.ctrl_port = 32768;
+    config.max_open_sockets = 7;
+    config.stack_size = 8192;
+    config.lru_purge_enable = true;
 
     httpd_uri_t index_uri = {
         .uri       = "/",
@@ -175,6 +206,37 @@ void startCameraServer() {
         .user_ctx  = NULL
     };
 
+    // Captive portal probes for Android, iOS, Windows
+    httpd_uri_t cp_android = { .uri = "/generate_204", .method = HTTP_GET, .handler = captive_portal_redirect, .user_ctx = NULL };
+    httpd_uri_t cp_apple   = { .uri = "/hotspot-detect.html", .method = HTTP_GET, .handler = captive_portal_redirect, .user_ctx = NULL };
+    httpd_uri_t cp_win     = { .uri = "/connecttest.txt", .method = HTTP_GET, .handler = captive_portal_redirect, .user_ctx = NULL };
+    httpd_uri_t cp_ncsi    = { .uri = "/ncsi.txt", .method = HTTP_GET, .handler = captive_portal_redirect, .user_ctx = NULL };
+
+    if (httpd_start(&camera_httpd, &config) == ESP_OK) {
+        httpd_register_uri_handler(camera_httpd, &index_uri);
+        httpd_register_uri_handler(camera_httpd, &capture_uri);
+        httpd_register_uri_handler(camera_httpd, &control_uri);
+        httpd_register_uri_handler(camera_httpd, &status_uri);
+        httpd_register_uri_handler(camera_httpd, &cp_android);
+        httpd_register_uri_handler(camera_httpd, &cp_apple);
+        httpd_register_uri_handler(camera_httpd, &cp_win);
+        httpd_register_uri_handler(camera_httpd, &cp_ncsi);
+        Serial.println("[INFO] Control & Web UI server started on Port 80");
+    } else {
+        Serial.println("[ERROR] Failed to start HTTP server on Port 80");
+    }
+
+    // -------------------------------------------------------------
+    // SERVER 2: Dedicated Video Streaming Server (Port 81)
+    // Runs independently so video streaming never blocks web controls or captive portal
+    // -------------------------------------------------------------
+    httpd_config_t config_s = HTTPD_DEFAULT_CONFIG();
+    config_s.server_port = 81;
+    config_s.ctrl_port = 32769;
+    config_s.max_open_sockets = 4;
+    config_s.stack_size = 8192;
+    config_s.lru_purge_enable = true;
+
     httpd_uri_t stream_uri = {
         .uri       = "/stream",
         .method    = HTTP_GET,
@@ -182,32 +244,28 @@ void startCameraServer() {
         .user_ctx  = NULL
     };
 
-    if (httpd_start(&camera_httpd, &config) == ESP_OK) {
-        httpd_register_uri_handler(camera_httpd, &index_uri);
-        httpd_register_uri_handler(camera_httpd, &capture_uri);
-        httpd_register_uri_handler(camera_httpd, &control_uri);
-        httpd_register_uri_handler(camera_httpd, &status_uri);
-        httpd_register_uri_handler(camera_httpd, &stream_uri);
-        Serial.println("[INFO] Web Dashboard server successfully started on port 80");
+    if (httpd_start(&stream_httpd, &config_s) == ESP_OK) {
+        httpd_register_uri_handler(stream_httpd, &stream_uri);
+        Serial.println("[INFO] Dedicated Video Stream server started on Port 81");
     } else {
-        Serial.println("[ERROR] Failed to start HTTP server");
+        Serial.println("[ERROR] Failed to start Stream server on Port 81");
     }
 }
 
 void setup() {
     Serial.begin(115200);
-    delay(1500);
+    delay(1000);
 
     Serial.println("\n==========================================");
-    Serial.println("  ESP32-S3 Freenove CAM Studio - AP Mode  ");
+    Serial.println("  ESP32-S3 High-Performance Camera Stream ");
     Serial.println("==========================================");
 
     // Initialize PSRAM check
     if (psramFound()) {
-        Serial.printf("[INFO] PSRAM initialized successfully! Total: %.2f MB\n", 
+        Serial.printf("[INFO] PSRAM initialized! Total: %.2f MB\n", 
                       (float)ESP.getPsramSize() / (1024.0 * 1024.0));
     } else {
-        Serial.println("[WARNING] PSRAM NOT found! High resolutions may fail!");
+        Serial.println("[WARNING] PSRAM NOT found! Frame buffer size restricted!");
     }
 
     // Camera Configuration
@@ -233,7 +291,7 @@ void setup() {
     config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
     config.frame_size = FRAMESIZE_VGA;
-    config.jpeg_quality = 12; // 10-63
+    config.jpeg_quality = 14; // High clarity, optimal packet size for Wi-Fi SoftAP
     config.fb_count = 2;      // Smooth double buffering
     config.fb_location = CAMERA_FB_IN_PSRAM;
     config.grab_mode = CAMERA_GRAB_LATEST;
@@ -242,8 +300,6 @@ void setup() {
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
         Serial.printf("[FATAL] Camera init failed with error 0x%x\n", err);
-        Serial.println("Check: 1. Camera ribbon cable seated tightly.");
-        Serial.println("       2. Pins matching Freenove ESP32-S3 CAM.");
         return;
     }
 
@@ -253,7 +309,7 @@ void setup() {
         switch (s->id.PID) {
             case OV2640_PID:
                 detected_sensor_name = "OV2640 (2MP)";
-                s->set_vflip(s, 1); // standard upright orientation
+                s->set_vflip(s, 1);
                 break;
             case OV3660_PID:
                 detected_sensor_name = "OV3660 (3MP)";
@@ -272,26 +328,33 @@ void setup() {
         Serial.printf("[INFO] Detected Camera Sensor: %s\n", detected_sensor_name.c_str());
     }
 
-    // Start Wi-Fi Access Point
-    Serial.println("\n[INFO] Starting Wi-Fi Access Point...");
+    // Wi-Fi Access Point Initialization with High-Performance Settings
+    Serial.println("\n[INFO] Initializing High-Performance Wi-Fi Hotspot...");
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(AP_SSID, AP_PASS);
+    WiFi.softAP(AP_SSID, AP_PASS, 1, 0, 4); // Channel 1, Visible, Max 4 clients
+    
+    // CRITICAL: Disable Wi-Fi Modem Sleep for zero-latency, lag-free video streaming
+    WiFi.setSleep(false);
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
 
     IPAddress IP = WiFi.softAPIP();
     Serial.println("==========================================");
     Serial.printf(" Wi-Fi Hotspot SSID : %s\n", AP_SSID);
-    Serial.printf(" Hotspot IP Address : http://%s\n", IP.toString().c_str());
-    Serial.println("==========================================");
-    Serial.println("Instructions:");
-    Serial.println("1. Connect your PC or Phone Wi-Fi to 'ESP32S3-CAM-AP'");
-    Serial.println("2. Open your web browser (Chrome/Edge/Firefox)");
-    Serial.printf("3. Navigate to: http://%s\n", IP.toString().c_str());
+    Serial.printf(" Web Portal Address : http://%s\n", IP.toString().c_str());
+    Serial.printf(" Dedicated Stream   : http://%s:81/stream\n", IP.toString().c_str());
     Serial.println("==========================================");
 
-    // Start Web Server
+    // Start Captive Portal DNS Server on Port 53
+    // Immediately resolves all DNS queries to 192.168.4.1 without 30s timeout
+    dnsServer.start(DNS_PORT, "*", IP);
+    Serial.println("[INFO] Captive Portal DNS Server active on Port 53");
+
+    // Start Dual HTTP Servers (Port 80 + Port 81)
     startCameraServer();
 }
 
 void loop() {
-    delay(10000);
+    // Process captive portal DNS requests immediately
+    dnsServer.processNextRequest();
+    delay(2);
 }
