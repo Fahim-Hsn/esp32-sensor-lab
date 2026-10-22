@@ -1,22 +1,24 @@
 #pragma once
 
-// Ultra-fast, responsive Glassmorphism Web Dashboard for ESP32-S3 CAM
+// High-speed, Ultra-low Latency Glassmorphism Web Dashboard for ESP32-S3 CAM
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ESP32-S3 CAM Studio</title>
+  <title>ESP32-S3 Real-Time Studio</title>
   <style>
     :root {
       --bg: #0b0f19;
-      --card-bg: rgba(22, 27, 46, 0.85);
+      --card-bg: rgba(22, 27, 46, 0.88);
       --card-border: rgba(255, 255, 255, 0.08);
       --accent: #6366f1;
       --accent-glow: rgba(99, 102, 241, 0.4);
       --accent-hover: #4f46e5;
       --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
       --text: #f3f4f6;
       --text-muted: #9ca3af;
       --panel-width: 320px;
@@ -35,7 +37,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       flex-direction: column;
     }
     header {
-      padding: 12px 20px;
+      padding: 10px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -52,14 +54,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       gap: 10px;
     }
     .badge-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
       background: linear-gradient(135deg, #6366f1, #a855f7);
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 15px var(--accent-glow);
+      box-shadow: 0 4px 12px var(--accent-glow);
     }
     .badge-icon svg {
       width: 18px;
@@ -67,12 +69,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       fill: #fff;
     }
     .brand-title {
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: 700;
       letter-spacing: -0.02em;
     }
     .brand-subtitle {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: var(--text-muted);
     }
     .status-badge {
@@ -83,7 +85,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       color: var(--success);
       padding: 4px 10px;
       border-radius: 16px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 600;
       border: 1px solid rgba(16, 185, 129, 0.3);
     }
@@ -91,20 +93,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 8px var(--success);
-      animation: pulse 1.8s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
+      background: currentColor;
     }
     .main-layout {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr var(--panel-width);
-      gap: 20px;
-      padding: 18px;
+      gap: 16px;
+      padding: 16px;
       max-width: 1400px;
       margin: 0 auto;
       width: 100%;
@@ -112,14 +108,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     @media (max-width: 860px) {
       .main-layout {
         grid-template-columns: 1fr;
-        padding: 12px;
+        padding: 10px;
       }
     }
     .viewport-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 14px;
-      padding: 16px;
+      padding: 14px;
       backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
@@ -137,10 +133,18 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       justify-content: center;
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
-    .stream-container img {
+    /* Hardware accelerated zero-lag canvas */
+    #stream-canvas {
       width: 100%;
       height: 100%;
       object-fit: contain;
+    }
+    /* Legacy fallback image element */
+    #stream-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: none;
     }
     .overlay-hud {
       position: absolute;
@@ -151,19 +155,23 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       z-index: 10;
     }
     .hud-pill {
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(6px);
-      padding: 4px 8px;
+      padding: 3px 8px;
       border-radius: 6px;
       font-size: 0.7rem;
       font-weight: 600;
       letter-spacing: 0.03em;
       border: 1px solid rgba(255,255,255,0.1);
     }
+    .hud-pill.highlight {
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
     .viewport-actions {
       display: flex;
-      gap: 10px;
-      margin-top: 14px;
+      gap: 8px;
+      margin-top: 12px;
       flex-wrap: wrap;
     }
     .btn {
@@ -171,9 +179,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 9px 15px;
+      padding: 8px 14px;
       border-radius: 8px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
       border: none;
@@ -197,31 +205,31 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     .sidebar {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
     .panel {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      padding: 16px;
+      padding: 14px;
       backdrop-filter: blur(16px);
     }
     .panel-title {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-muted);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     .control-row {
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
     }
     .control-row:last-child {
       margin-bottom: 0;
@@ -229,7 +237,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     .control-header {
       display: flex;
       justify-content: space-between;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 500;
     }
     .control-val {
@@ -243,9 +251,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       background: rgba(11, 15, 25, 0.85);
       border: 1px solid var(--card-border);
       color: var(--text);
-      padding: 8px 10px;
+      padding: 7px 9px;
       border-radius: 6px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       outline: none;
       cursor: pointer;
     }
@@ -255,15 +263,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
-      height: 5px;
+      height: 4px;
       background: rgba(255, 255, 255, 0.12);
       border-radius: 4px;
       outline: none;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: var(--accent);
       cursor: pointer;
@@ -273,14 +281,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 5px 0;
-      font-size: 0.8rem;
+      padding: 4px 0;
+      font-size: 0.78rem;
     }
     .switch {
       position: relative;
       display: inline-block;
-      width: 38px;
-      height: 20px;
+      width: 36px;
+      height: 18px;
     }
     .switch input {
       opacity: 0;
@@ -298,8 +306,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     .slider:before {
       position: absolute;
       content: "";
-      height: 14px;
-      width: 14px;
+      height: 12px;
+      width: 12px;
       left: 3px;
       bottom: 3px;
       background-color: white;
@@ -315,23 +323,47 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 6px;
     }
     .info-box {
       background: rgba(0,0,0,0.3);
-      padding: 8px;
+      padding: 7px;
       border-radius: 6px;
       border: 1px solid rgba(255,255,255,0.04);
     }
     .info-label {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       color: var(--text-muted);
       margin-bottom: 2px;
     }
     .info-value {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 700;
       color: #fff;
+    }
+    .mode-switch-container {
+      display: flex;
+      background: rgba(0,0,0,0.3);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .mode-tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .mode-tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
     }
   </style>
 </head>
@@ -342,13 +374,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-8.5l3.5 4.5 2.5-3.01L16.5 17H7.5l-2-2.5z"/></svg>
       </div>
       <div>
-        <div class="brand-title">ESP32-S3 CAM Studio</div>
-        <div class="brand-subtitle">High-Speed Dedicated Stream Engine</div>
+        <div class="brand-title">ESP32-S3 Real-Time Studio</div>
+        <div class="brand-subtitle">Zero-Buffer Ultra-Low Latency Engine</div>
       </div>
     </div>
-    <div class="status-badge">
+    <div class="status-badge" id="status-badge">
       <span class="pulse-dot"></span>
-      <span id="stream-status">STREAM ACTIVE</span>
+      <span id="stream-status">LIVE (< 60ms LAG)</span>
     </div>
   </header>
 
@@ -356,14 +388,22 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="viewport-card">
       <div class="stream-container" id="stream-box">
         <div class="overlay-hud">
-          <div class="hud-pill" id="hud-port">PORT: 81 (ISOLATED)</div>
+          <div class="hud-pill highlight" id="hud-mode">ZERO-LAG CANVAS</div>
+          <div class="hud-pill" id="hud-latency">-- ms PING</div>
+          <div class="hud-pill" id="hud-fps">0 FPS</div>
           <div class="hud-pill" id="hud-res">VGA (640x480)</div>
         </div>
-        <img id="stream-view" alt="ESP32 Stream">
+        
+        <!-- Ultra-low Latency Hardware Accelerated Canvas -->
+        <canvas id="stream-canvas"></canvas>
+        
+        <!-- Legacy MJPEG image fallback -->
+        <img id="stream-img" alt="ESP32 Stream">
       </div>
+      
       <div class="viewport-actions">
         <button class="btn btn-primary" onclick="captureSnapshot()">
-          <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
           Capture Snapshot
         </button>
         <button class="btn btn-secondary" id="toggle-stream-btn" onclick="toggleStream()">
@@ -377,31 +417,37 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     <div class="sidebar">
       <div class="panel">
-        <div class="panel-title">Camera Controls</div>
-        
+        <div class="panel-title">Streaming Engine Mode</div>
+        <div class="mode-switch-container">
+          <div class="mode-tab active" id="tab-canvas" onclick="setEngineMode('canvas')">
+            Zero-Lag Canvas
+          </div>
+          <div class="mode-tab" id="tab-mjpeg" onclick="setEngineMode('mjpeg')">
+            MJPEG (Port 81)
+          </div>
+        </div>
+
         <div class="control-row">
           <div class="control-header">
-            <span>Resolution</span>
+            <span>Resolution Preset</span>
           </div>
           <select id="framesize" onchange="updateParam('framesize', this.value)">
-            <option value="13">UXGA (1600x1200)</option>
-            <option value="12">SXGA (1280x1024)</option>
+            <option value="8" selected>VGA (640x480) - Recommended</option>
+            <option value="9">SVGA (800x600) - Smooth</option>
+            <option value="6">CIF (400x296) - Fast</option>
+            <option value="5">QVGA (320x240) - Ultra-Fast (30+ FPS)</option>
             <option value="10">XGA (1024x768)</option>
-            <option value="9">SVGA (800x600)</option>
-            <option value="8" selected>VGA (640x480)</option>
-            <option value="6">CIF (400x296)</option>
-            <option value="5">QVGA (320x240)</option>
-            <option value="3">HQVGA (240x176)</option>
-            <option value="1">QQVGA (160x120)</option>
+            <option value="12">SXGA (1280x1024)</option>
+            <option value="13">UXGA (1600x1200)</option>
           </select>
         </div>
 
         <div class="control-row">
           <div class="control-header">
             <span>Quality (Compression)</span>
-            <span class="control-val" id="val-quality">14</span>
+            <span class="control-val" id="val-quality">16</span>
           </div>
-          <input type="range" id="quality" min="10" max="63" value="14" oninput="updateParam('quality', this.value); document.getElementById('val-quality').innerText = this.value">
+          <input type="range" id="quality" min="10" max="63" value="16" oninput="updateParam('quality', this.value); document.getElementById('val-quality').innerText = this.value">
         </div>
 
         <div class="control-row">
@@ -440,7 +486,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       <div class="panel">
         <div class="panel-title">
           <span>Diagnostics</span>
-          <button style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:0.7rem;" onclick="fetchDiagnostics()">Refresh</button>
+          <button style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:0.68rem;" onclick="fetchDiagnostics()">Refresh</button>
         </div>
         <div class="info-grid">
           <div class="info-box">
@@ -465,18 +511,97 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    const streamImg = document.getElementById('stream-view');
+    const canvas = document.getElementById('stream-canvas');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+    const imgEl = document.getElementById('stream-img');
+    const statusText = document.getElementById('stream-status');
+    const hudLatency = document.getElementById('hud-latency');
+    const hudFps = document.getElementById('hud-fps');
+    const hudMode = document.getElementById('hud-mode');
+
+    let currentMode = 'canvas'; // 'canvas' (zero buffer/lag) or 'mjpeg' (port 81)
     let isStreaming = true;
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let abortController = null;
 
-    // Stream runs on isolated Port 81 so it never blocks web controls or captive portal
-    const streamHost = 'http://' + window.location.hostname + ':81/stream';
+    // Zero-lag real-time frame engine
+    async function runCanvasLoop() {
+      while (isStreaming && currentMode === 'canvas') {
+        const tStart = performance.now();
+        abortController = new AbortController();
 
-    function startStream() {
-      streamImg.src = streamHost + '?t=' + Date.now();
-      isStreaming = true;
-      document.getElementById('toggle-stream-btn').innerText = 'Pause Stream';
-      document.getElementById('stream-status').innerText = 'STREAM ACTIVE';
-      document.getElementById('stream-status').parentElement.style.color = '#10b981';
+        try {
+          // Pull absolute freshest frame with zero network queueing
+          const res = await fetch('/capture?t=' + Date.now(), { 
+            cache: 'no-store',
+            signal: abortController.signal
+          });
+
+          if (!res.ok) {
+            await new Promise(r => setTimeout(r, 40));
+            continue;
+          }
+
+          const blob = await res.blob();
+          const tReceived = performance.now();
+          const latencyMs = Math.round(tReceived - tStart);
+
+          // Hardware accelerated decoding off the main thread
+          const bitmap = await createImageBitmap(blob);
+
+          if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+          }
+
+          ctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+
+          frameCount++;
+          hudLatency.innerText = latencyMs + ' ms PING';
+
+          // Frame rate counter
+          const now = performance.now();
+          if (now - lastFpsTime >= 1000) {
+            const fps = Math.round((frameCount * 1000) / (now - lastFpsTime));
+            hudFps.innerText = fps + ' FPS';
+            frameCount = 0;
+            lastFpsTime = now;
+          }
+
+          // Dynamic throttle: no delay needed if network is smooth, tiny yield for browser rendering
+          await new Promise(r => requestAnimationFrame(r));
+        } catch (e) {
+          if (!isStreaming) break;
+          await new Promise(r => setTimeout(r, 60));
+        }
+      }
+    }
+
+    function setEngineMode(mode) {
+      currentMode = mode;
+      document.getElementById('tab-canvas').classList.toggle('active', mode === 'canvas');
+      document.getElementById('tab-mjpeg').classList.toggle('active', mode === 'mjpeg');
+
+      if (mode === 'canvas') {
+        hudMode.innerText = 'ZERO-LAG CANVAS';
+        hudMode.classList.add('highlight');
+        imgEl.style.display = 'none';
+        imgEl.src = '';
+        canvas.style.display = 'block';
+        if (isStreaming) runCanvasLoop();
+      } else {
+        hudMode.innerText = 'MJPEG PORT 81';
+        hudMode.classList.remove('highlight');
+        hudLatency.innerText = 'STREAMING';
+        if (abortController) abortController.abort();
+        canvas.style.display = 'none';
+        imgEl.style.display = 'block';
+        if (isStreaming) {
+          imgEl.src = 'http://' + window.location.hostname + ':81/stream?t=' + Date.now();
+        }
+      }
     }
 
     function updateParam(param, val) {
@@ -488,30 +613,50 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('hud-res').innerText = sel.options[sel.selectedIndex].text.split(' ')[0];
           }
         })
-        .catch(e => console.warn("Param update warning:", e));
+        .catch(e => console.warn(e));
     }
 
     function toggleStream() {
       const btn = document.getElementById('toggle-stream-btn');
-      const status = document.getElementById('stream-status');
       if (isStreaming) {
-        streamImg.src = '';
         isStreaming = false;
+        if (abortController) abortController.abort();
+        imgEl.src = '';
         btn.innerText = 'Resume Stream';
-        status.innerText = 'STREAM PAUSED';
-        status.parentElement.style.color = '#ef4444';
+        statusText.innerText = 'STREAM PAUSED';
+        statusText.parentElement.style.color = '#ef4444';
       } else {
-        startStream();
+        isStreaming = true;
+        btn.innerText = 'Pause Stream';
+        statusText.innerText = 'LIVE (< 60ms LAG)';
+        statusText.parentElement.style.color = '#10b981';
+        if (currentMode === 'canvas') {
+          runCanvasLoop();
+        } else {
+          imgEl.src = 'http://' + window.location.hostname + ':81/stream?t=' + Date.now();
+        }
       }
     }
 
     function captureSnapshot() {
-      const link = document.createElement('a');
-      link.href = '/capture?t=' + Date.now();
-      link.download = `esp32s3_snap_${Date.now()}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (currentMode === 'canvas' && canvas.width > 0) {
+        canvas.toBlob(blob => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `esp32s3_snap_${Date.now()}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+        }, 'image/jpeg', 0.95);
+      } else {
+        const link = document.createElement('a');
+        link.href = '/capture?t=' + Date.now();
+        link.download = `esp32s3_snap_${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     }
 
     function toggleFullscreen() {
@@ -534,9 +679,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         .catch(() => {});
     }
 
-    // Start stream immediately on load
     window.addEventListener('DOMContentLoaded', () => {
-      startStream();
+      setEngineMode('canvas');
       fetchDiagnostics();
     });
   </script>

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include "esp_wifi.h"
 #include <DNSServer.h>
 #include "esp_camera.h"
 #include "esp_http_server.h"
@@ -38,16 +39,15 @@ static esp_err_t captive_portal_redirect(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Handler for single snapshot capture
+// High-speed atomic snapshot capture (Used by the Zero-Lag Canvas Engine)
 static esp_err_t capture_handler(httpd_req_t *req) {
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb) {
-        Serial.println("[ERROR] Camera capture failed");
         httpd_resp_send_500(req);
         return ESP_FAIL;
     }
 
-    // Verify JPEG integrity before sending
+    // Verify JPEG SOI marker
     if (fb->len < 100 || fb->buf[0] != 0xFF || fb->buf[1] != 0xD8) {
         esp_camera_fb_return(fb);
         httpd_resp_send_500(req);
@@ -57,13 +57,16 @@ static esp_err_t capture_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/jpeg");
     httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
+    httpd_resp_set_hdr(req, "Pragma", "no-cache");
+    httpd_resp_set_hdr(req, "Expires", "0");
 
     esp_err_t res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
     esp_camera_fb_return(fb);
     return res;
 }
 
-// Dedicated Handler for live MJPEG video stream (Runs exclusively on Port 81)
+// Dedicated Handler for live MJPEG video stream (Runs on isolated Port 81)
 static esp_err_t stream_handler(httpd_req_t *req) {
     camera_fb_t *fb = NULL;
     esp_err_t res = ESP_OK;
@@ -83,7 +86,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
             continue;
         }
 
-        // Validate complete JPEG frame to prevent corrupted bottom-half stripes
+        // Validate complete frame
         bool isCompleteJpeg = (fb->len > 100 &&
                                fb->buf[0] == 0xFF && fb->buf[1] == 0xD8 &&
                                fb->buf[fb->len - 2] == 0xFF && fb->buf[fb->len - 1] == 0xD9);
@@ -109,7 +112,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
         int64_t fr_ready = esp_timer_get_time();
         int64_t elapsed_ms = (fr_ready - fr_start) / 1000;
 
-        // Frame pacing
+        // Pacing to avoid TCP queue saturation
         if (elapsed_ms < 33) {
             vTaskDelay(pdMS_TO_TICKS(33 - elapsed_ms));
         } else {
@@ -189,14 +192,16 @@ static esp_err_t status_handler(httpd_req_t *req) {
 
 void startCameraServer() {
     // -------------------------------------------------------------
-    // SERVER 1: Main Control & Web UI Server (Port 80)
+    // SERVER 1: Main Control & Zero-Lag Web UI Server (Port 80)
     // -------------------------------------------------------------
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
     config.ctrl_port = 32768;
-    config.max_open_sockets = 7;
-    config.stack_size = 8192;
+    config.max_open_sockets = 10;
+    config.stack_size = 10240;
     config.lru_purge_enable = true;
+    config.recv_wait_timeout = 5;
+    config.send_wait_timeout = 5;
 
     httpd_uri_t index_uri = {
         .uri       = "/",
@@ -241,8 +246,6 @@ void startCameraServer() {
         httpd_register_uri_handler(camera_httpd, &cp_win);
         httpd_register_uri_handler(camera_httpd, &cp_ncsi);
         Serial.println("[INFO] Control & Web UI server started on Port 80");
-    } else {
-        Serial.println("[ERROR] Failed to start HTTP server on Port 80");
     }
 
     // -------------------------------------------------------------
@@ -252,8 +255,10 @@ void startCameraServer() {
     config_s.server_port = 81;
     config_s.ctrl_port = 32769;
     config_s.max_open_sockets = 4;
-    config_s.stack_size = 8192;
+    config_s.stack_size = 10240;
     config_s.lru_purge_enable = true;
+    config_s.recv_wait_timeout = 5;
+    config_s.send_wait_timeout = 5;
 
     httpd_uri_t stream_uri = {
         .uri       = "/stream",
@@ -265,8 +270,6 @@ void startCameraServer() {
     if (httpd_start(&stream_httpd, &config_s) == ESP_OK) {
         httpd_register_uri_handler(stream_httpd, &stream_uri);
         Serial.println("[INFO] Dedicated Video Stream server started on Port 81");
-    } else {
-        Serial.println("[ERROR] Failed to start Stream server on Port 81");
     }
 }
 
@@ -275,7 +278,7 @@ void setup() {
     delay(1000);
 
     Serial.println("\n==========================================");
-    Serial.println("  ESP32-S3 High-Performance Camera Stream ");
+    Serial.println("  ESP32-S3 Zero-Lag Camera Studio (SoftAP)");
     Serial.println("==========================================");
 
     // Initialize PSRAM check
@@ -307,14 +310,17 @@ void setup() {
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
 
-    // CRITICAL: 10MHz XCLK prevents PSRAM DMA FIFO overflow (eliminates bottom-half vertical stripes)
+    // 10MHz XCLK: Eliminates DMA FIFO overflow and vertical stripes
     config.xclk_freq_hz = 10000000;
     config.pixel_format = PIXFORMAT_JPEG;
     config.frame_size = FRAMESIZE_VGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 2;
+    config.jpeg_quality = 14;          // Optimal clarity vs packet size (avoids Wi-Fi congestion)
+    config.fb_count = 2;               // Smooth double buffering in PSRAM
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY; // Only grab 100% finished frames
+    
+    // CRITICAL: CAMERA_GRAB_LATEST ensures old buffered frames are discarded so the video
+    // stream ALWAYS delivers the current real-time frame without accumulating latency!
+    config.grab_mode = CAMERA_GRAB_LATEST;
 
     // Initialize Camera
     esp_err_t err = esp_camera_init(&config);
@@ -348,20 +354,25 @@ void setup() {
         Serial.printf("[INFO] Detected Camera Sensor: %s\n", detected_sensor_name.c_str());
     }
 
-    // Wi-Fi Access Point Initialization
+    // Wi-Fi Access Point Initialization with Zero-Sleep Mode
+    Serial.println("\n[INFO] Initializing High-Performance Wi-Fi Hotspot...");
     WiFi.mode(WIFI_AP);
     WiFi.softAP(AP_SSID, AP_PASS, 1, 0, 4);
-    WiFi.setSleep(false);
+
+    // CRITICAL: Explicit low-level Wi-Fi power-save disable
+    esp_wifi_set_ps(WIFI_PS_NONE);
     WiFi.setTxPower(WIFI_POWER_19_5dBm);
 
     IPAddress IP = WiFi.softAPIP();
     Serial.println("==========================================");
     Serial.printf(" Wi-Fi Hotspot SSID : %s\n", AP_SSID);
     Serial.printf(" Web Portal Address : http://%s\n", IP.toString().c_str());
-    Serial.printf(" Dedicated Stream   : http://%s:81/stream\n", IP.toString().c_str());
     Serial.println("==========================================");
 
+    // Fast Captive Portal DNS on Port 53
     dnsServer.start(DNS_PORT, "*", IP);
+    
+    // Start Dual Servers
     startCameraServer();
 }
 
