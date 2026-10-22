@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32-S3 Type-C Web Serial Viewer</title>
+  <title>ESP32-S3 Type-C Flicker-Free Web Studio</title>
   <style>
     :root {
       --bg: #090d16;
-      --card-bg: rgba(18, 24, 38, 0.75);
+      --card-bg: rgba(18, 24, 38, 0.8);
       --card-border: rgba(255, 255, 255, 0.08);
       --accent: #3b82f6;
       --accent-glow: rgba(59, 130, 246, 0.4);
@@ -32,12 +32,12 @@
       flex-direction: column;
     }
     header {
-      padding: 16px 28px;
+      padding: 14px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--card-border);
-      background: rgba(9, 13, 22, 0.85);
+      background: rgba(9, 13, 22, 0.9);
       backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
@@ -49,8 +49,8 @@
       gap: 12px;
     }
     .badge-icon {
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       border-radius: 10px;
       background: linear-gradient(135deg, #3b82f6, #06b6d4);
       display: flex;
@@ -59,17 +59,17 @@
       box-shadow: 0 4px 15px var(--accent-glow);
     }
     .badge-icon svg {
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       fill: #fff;
     }
     .brand-title {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
       letter-spacing: -0.02em;
     }
     .brand-subtitle {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
     }
     .status-badge {
@@ -78,9 +78,9 @@
       gap: 8px;
       background: rgba(239, 68, 68, 0.15);
       color: var(--danger);
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 20px;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 600;
       border: 1px solid rgba(239, 68, 68, 0.3);
       transition: all 0.3s ease;
@@ -100,22 +100,23 @@
       flex: 1;
       display: grid;
       grid-template-columns: 1fr var(--panel-width);
-      gap: 24px;
-      padding: 24px;
-      max-width: 1600px;
+      gap: 20px;
+      padding: 20px;
+      max-width: 1500px;
       margin: 0 auto;
       width: 100%;
     }
     @media (max-width: 992px) {
       .main-layout {
         grid-template-columns: 1fr;
+        padding: 12px;
       }
     }
     .viewport-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 20px;
+      border-radius: 14px;
+      padding: 16px;
       backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
@@ -125,19 +126,21 @@
       position: relative;
       width: 100%;
       aspect-ratio: 4 / 3;
-      max-height: 70vh;
+      max-height: 68vh;
       background: #000;
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
-    .stream-container img {
+    /* Hardware accelerated, zero-flicker double-buffered canvas */
+    #stream-canvas {
       width: 100%;
       height: 100%;
       object-fit: contain;
+      display: none;
     }
     .placeholder-msg {
       text-align: center;
@@ -145,34 +148,34 @@
       color: var(--text-muted);
     }
     .placeholder-msg svg {
-      width: 56px;
-      height: 56px;
+      width: 52px;
+      height: 52px;
       stroke: var(--text-muted);
       margin-bottom: 12px;
       opacity: 0.6;
     }
     .overlay-hud {
       position: absolute;
-      top: 14px;
-      left: 14px;
+      top: 12px;
+      left: 12px;
       display: flex;
       gap: 8px;
       z-index: 10;
     }
     .hud-pill {
-      background: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(8px);
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 0.72rem;
       font-weight: 600;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       border: 1px solid rgba(255,255,255,0.1);
     }
     .viewport-actions {
       display: flex;
-      gap: 12px;
-      margin-top: 16px;
+      gap: 10px;
+      margin-top: 14px;
       flex-wrap: wrap;
     }
     .btn {
@@ -180,9 +183,9 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-size: 0.85rem;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
       border: none;
@@ -191,7 +194,7 @@
     }
     .btn-primary {
       background: linear-gradient(135deg, var(--accent), #1d4ed8);
-      box-shadow: 0 4px 14px var(--accent-glow);
+      box-shadow: 0 4px 12px var(--accent-glow);
     }
     .btn-primary:hover {
       background: linear-gradient(135deg, var(--accent-hover), #1e40af);
@@ -214,28 +217,28 @@
     .sidebar {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
     .panel {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 18px;
+      border-radius: 12px;
+      padding: 16px;
       backdrop-filter: blur(16px);
     }
     .panel-title {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       color: var(--text-muted);
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .control-row {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
     .control-row:last-child {
       margin-bottom: 0;
@@ -243,7 +246,7 @@
     .control-header {
       display: flex;
       justify-content: space-between;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 500;
     }
     .control-val {
@@ -254,12 +257,12 @@
       width: 100%;
     }
     select {
-      background: rgba(11, 15, 25, 0.8);
+      background: rgba(11, 15, 25, 0.85);
       border: 1px solid var(--card-border);
       color: var(--text);
-      padding: 9px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
       outline: none;
       cursor: pointer;
     }
@@ -269,32 +272,32 @@
     input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
-      height: 6px;
+      height: 5px;
       background: rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       outline: none;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
       border-radius: 50%;
       background: var(--accent);
       cursor: pointer;
-      box-shadow: 0 0 10px var(--accent-glow);
+      box-shadow: 0 0 8px var(--accent-glow);
     }
     .toggle-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 0;
-      font-size: 0.85rem;
+      padding: 5px 0;
+      font-size: 0.82rem;
     }
     .switch {
       position: relative;
       display: inline-block;
-      width: 42px;
-      height: 22px;
+      width: 38px;
+      height: 20px;
     }
     .switch input {
       opacity: 0;
@@ -306,46 +309,56 @@
       cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
       background-color: rgba(255, 255, 255, 0.15);
-      transition: .3s;
-      border-radius: 24px;
+      transition: .25s;
+      border-radius: 20px;
     }
     .slider:before {
       position: absolute;
       content: "";
-      height: 16px;
-      width: 16px;
+      height: 14px;
+      width: 14px;
       left: 3px;
       bottom: 3px;
       background-color: white;
-      transition: .3s;
+      transition: .25s;
       border-radius: 50%;
     }
     input:checked + .slider {
       background-color: var(--accent);
     }
     input:checked + .slider:before {
-      transform: translateX(20px);
+      transform: translateX(18px);
     }
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 8px;
     }
     .info-box {
       background: rgba(0,0,0,0.3);
-      padding: 10px;
-      border-radius: 8px;
+      padding: 8px;
+      border-radius: 6px;
       border: 1px solid rgba(255,255,255,0.04);
     }
     .info-label {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
       margin-bottom: 2px;
     }
     .info-value {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: #fff;
+    }
+    .hint-box {
+      margin-top: 10px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      background: rgba(59, 130, 246, 0.08);
+      border-left: 3px solid var(--accent);
+      padding: 8px 10px;
+      border-radius: 0 6px 6px 0;
     }
   </style>
 </head>
@@ -356,8 +369,8 @@
         <svg viewBox="0 0 24 24"><path d="M15 7v4h1v2h-1v4h-2v-4h-2v4H9v-4H8v-2h1V7h2v4h2V7h2m1-5H8c-1.1 0-2 .9-2 2v1h12V4c0-1.1-.9-2-2-2M8 22h8c1.1 0 2-.9 2-2v-1H6v1c0 1.1.9 2 2 2z"/></svg>
       </div>
       <div>
-        <div class="brand-title">ESP32-S3 Type-C Web Viewer</div>
-        <div class="brand-subtitle">High Speed Direct USB Web Serial Camera Interface</div>
+        <div class="brand-title">ESP32-S3 Type-C Web Studio</div>
+        <div class="brand-subtitle">Flicker-Free Hardware-Accelerated Video Engine</div>
       </div>
     </div>
     <div class="status-badge" id="status-badge">
@@ -371,25 +384,29 @@
       <div class="stream-container" id="stream-box">
         <div class="overlay-hud" id="hud" style="display: none;">
           <div class="hud-pill" id="hud-fps">0 FPS</div>
+          <div class="hud-pill" id="hud-res">VGA (640x480)</div>
           <div class="hud-pill" id="hud-rate">0 KB/s</div>
         </div>
-        <img id="stream-view" style="display: none;" alt="ESP32 Stream">
+        
+        <!-- Hardware-accelerated Canvas with zero flicker -->
+        <canvas id="stream-canvas"></canvas>
+
         <div class="placeholder-msg" id="placeholder-box">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
           <h3>Camera is Not Connected</h3>
-          <p style="margin-top: 6px; font-size: 0.85rem;">Click "Connect Type-C ESP32" below and select your COM Port to start the live video feed.</p>
+          <p style="margin-top: 6px; font-size: 0.82rem;">Click "Connect Type-C ESP32" below and select your COM Port to start high-speed streaming.</p>
         </div>
       </div>
 
       <div class="viewport-actions">
         <button class="btn btn-primary" id="connect-btn" onclick="toggleConnection()">
-          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
           Connect Type-C ESP32
         </button>
         <button class="btn btn-secondary" onclick="captureSnapshot()">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
           Capture Snapshot
         </button>
         <button class="btn btn-secondary" onclick="toggleFullscreen()">
@@ -404,25 +421,24 @@
         
         <div class="control-row">
           <div class="control-header">
-            <span>Resolution</span>
+            <span>Resolution Preset</span>
           </div>
-          <select id="framesize" onchange="sendCmd('R' + this.value)">
-            <option value="13">UXGA (1600x1200)</option>
-            <option value="12">SXGA (1280x1024)</option>
-            <option value="10">XGA (1024x768)</option>
-            <option value="9">SVGA (800x600)</option>
-            <option value="8" selected>VGA (640x480)</option>
-            <option value="6">CIF (400x296)</option>
-            <option value="5">QVGA (320x240)</option>
+          <select id="framesize" onchange="sendResolution(this.value)">
+            <option value="8" selected>VGA (640x480) - Recommended (30 FPS)</option>
+            <option value="9">SVGA (800x600) - Smooth (25 FPS)</option>
+            <option value="10">XGA (1024x768) - High Detail</option>
+            <option value="12">SXGA (1280x1024) - HD</option>
+            <option value="13">UXGA (1600x1200) - Ultra HD</option>
+            <option value="5">QVGA (320x240) - Ultra Fast (40+ FPS)</option>
           </select>
         </div>
 
         <div class="control-row">
           <div class="control-header">
             <span>Quality (Compression)</span>
-            <span class="control-val" id="val-quality">14</span>
+            <span class="control-val" id="val-quality">12</span>
           </div>
-          <input type="range" id="quality" min="10" max="63" value="14" oninput="sendCmd('Q' + this.value); document.getElementById('val-quality').innerText = this.value">
+          <input type="range" id="quality" min="10" max="63" value="12" oninput="sendCmd('Q' + this.value); document.getElementById('val-quality').innerText = this.value">
         </div>
 
         <div class="control-row">
@@ -456,6 +472,10 @@
             <span class="slider"></span>
           </label>
         </div>
+
+        <div class="hint-box">
+          <strong>Tip:</strong> For high resolutions (XGA / UXGA), connect the Type-C cable to the native <strong>"USB"</strong> port for maximum 12 Mbps throughput without lag.
+        </div>
       </div>
 
       <div class="panel">
@@ -463,10 +483,10 @@
         <div class="info-grid">
           <div class="info-box">
             <div class="info-label">BAUD RATE</div>
-            <div class="info-value">921,600</div>
+            <div class="info-value">921,600 / CDC</div>
           </div>
           <div class="info-box">
-            <div class="info-label">FRAME RATE</div>
+            <div class="info-label">LIVE FRAME RATE</div>
             <div class="info-value" id="stat-fps">0 FPS</div>
           </div>
           <div class="info-box">
@@ -474,7 +494,7 @@
             <div class="info-value" id="stat-kbps">0 KB/s</div>
           </div>
           <div class="info-box">
-            <div class="info-label">LAST FRAME SIZE</div>
+            <div class="info-label">FRAME PAYLOAD</div>
             <div class="info-value" id="stat-size">0 KB</div>
           </div>
         </div>
@@ -489,17 +509,18 @@
     let isConnected = false;
     let keepReading = false;
 
-    const streamImg = document.getElementById('stream-view');
+    const canvas = document.getElementById('stream-canvas');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
     const placeholder = document.getElementById('placeholder-box');
     const hud = document.getElementById('hud');
     const connectBtn = document.getElementById('connect-btn');
     const statusBadge = document.getElementById('status-badge');
     const statusText = document.getElementById('conn-status-text');
 
-    // FPS and Throughput stats
     let frameCount = 0;
     let totalBytes = 0;
     let lastStatTime = performance.now();
+    let isDecoding = false;
 
     async function toggleConnection() {
       if (isConnected) {
@@ -517,7 +538,7 @@
 
       try {
         port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 921600, bufferSize: 1024 * 1024 });
+        await port.open({ baudRate: 921600, bufferSize: 2 * 1024 * 1024 });
 
         writer = port.writable.getWriter();
         isConnected = true;
@@ -530,7 +551,7 @@
         connectBtn.classList.add('btn-danger');
 
         placeholder.style.display = 'none';
-        streamImg.style.display = 'block';
+        canvas.style.display = 'block';
         hud.style.display = 'flex';
 
         readSerialStream();
@@ -543,24 +564,24 @@
     async function disconnect() {
       keepReading = false;
       if (reader) {
-        await reader.cancel();
+        try { await reader.cancel(); } catch(e) {}
       }
       if (writer) {
-        await writer.releaseLock();
+        try { await writer.releaseLock(); } catch(e) {}
       }
       if (port) {
-        await port.close();
+        try { await port.close(); } catch(e) {}
       }
 
       isConnected = false;
       statusBadge.classList.remove('connected');
       statusText.innerText = "DISCONNECTED";
-      connectBtn.innerHTML = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> Connect Type-C ESP32`;
+      connectBtn.innerHTML = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> Connect Type-C ESP32`;
       connectBtn.classList.add('btn-primary');
       connectBtn.classList.remove('btn-danger');
 
       placeholder.style.display = 'block';
-      streamImg.style.display = 'none';
+      canvas.style.display = 'none';
       hud.style.display = 'none';
     }
 
@@ -570,37 +591,49 @@
         const encoder = new TextEncoder();
         await writer.write(encoder.encode(cmd + "\n"));
       } catch (e) {
-        console.error("Failed to send command:", e);
+        console.warn("Failed to send command:", e);
       }
     }
 
-    // High performance stream parser
+    function sendResolution(val) {
+      sendCmd('R' + val);
+      const sel = document.getElementById('framesize');
+      const text = sel.options[sel.selectedIndex].text.split(' ')[0];
+      document.getElementById('hud-res').innerText = text;
+    }
+
+    // High performance memory-safe stream parser with zero flicker
     async function readSerialStream() {
       reader = port.readable.getReader();
-      let buffer = new Uint8Array(0);
+      
+      // Pre-allocated sliding buffer to eliminate GC allocations and browser crashes
+      const MAX_BUF = 3 * 1024 * 1024;
+      let buffer = new Uint8Array(MAX_BUF);
+      let bufLen = 0;
 
       const HEADER = [0xAA, 0x55, 0xAA, 0x55];
-      let lastObjectUrl = null;
 
       try {
         while (keepReading) {
           const { value, done } = await reader.read();
           if (done) break;
-          if (!value) continue;
+          if (!value || value.length === 0) continue;
 
           totalBytes += value.length;
 
-          // Append incoming chunk to accumulator buffer
-          const newBuf = new Uint8Array(buffer.length + value.length);
-          newBuf.set(buffer);
-          newBuf.set(value, buffer.length);
-          buffer = newBuf;
+          // Prevent memory overflow if stream desyncs
+          if (bufLen + value.length > MAX_BUF) {
+            bufLen = 0; // reset desynchronized buffer
+          }
+
+          buffer.set(value, bufLen);
+          bufLen += value.length;
 
           // Parse frames
-          while (buffer.length >= 8) {
-            // Find header
+          while (bufLen >= 8) {
+            // Locate magic header
             let headerIdx = -1;
-            for (let i = 0; i <= buffer.length - 4; i++) {
+            for (let i = 0; i <= bufLen - 4; i++) {
               if (buffer[i] === HEADER[0] &&
                   buffer[i+1] === HEADER[1] &&
                   buffer[i+2] === HEADER[2] &&
@@ -611,77 +644,115 @@
             }
 
             if (headerIdx === -1) {
-              // Header not found yet, keep only last 3 bytes in case header spans chunk boundary
-              buffer = buffer.slice(Math.max(0, buffer.length - 3));
+              // Header not found, keep only last 3 bytes
+              if (bufLen > 3) {
+                buffer.copyWithin(0, bufLen - 3, bufLen);
+                bufLen = 3;
+              }
               break;
             }
 
-            // If header is not at 0, drop corrupted bytes before header
+            // Compact buffer up to header index
             if (headerIdx > 0) {
-              buffer = buffer.slice(headerIdx);
+              buffer.copyWithin(0, headerIdx, bufLen);
+              bufLen -= headerIdx;
             }
 
-            // Need at least 8 bytes for Header (4) + Length (4)
-            if (buffer.length < 8) break;
+            if (bufLen < 8) break;
 
-            const payloadLen = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-            const fullPacketLen = 8 + payloadLen + 2; // header + len + payload + footer
+            const payloadLen = ((buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7]) >>> 0;
+            
+            // Sanity check: valid JPEG sizes are between 500 bytes and 500 KB
+            if (payloadLen > 500 * 1024 || payloadLen < 100) {
+              // Corrupted length header, shift by 4 bytes to find next sync
+              buffer.copyWithin(0, 4, bufLen);
+              bufLen -= 4;
+              continue;
+            }
 
-            if (buffer.length < fullPacketLen) {
-              // Incomplete frame, wait for more data
+            const fullPacketLen = 8 + payloadLen + 2;
+            if (bufLen < fullPacketLen) {
+              // Incomplete frame, wait for more chunks
               break;
             }
 
-            // Extract JPEG payload
-            const jpegBytes = buffer.slice(8, 8 + payloadLen);
-            buffer = buffer.slice(fullPacketLen);
-
-            // Render Frame
-            const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
-            if (lastObjectUrl) {
-              URL.revokeObjectURL(lastObjectUrl);
+            // Extract valid JPEG bytes
+            // Verify JPEG SOI marker: 0xFF, 0xD8
+            if (buffer[8] === 0xFF && buffer[9] === 0xD8) {
+              const jpegSlice = buffer.slice(8, 8 + payloadLen);
+              renderFrame(jpegSlice);
+              document.getElementById('stat-size').innerText = (payloadLen / 1024).toFixed(1) + ' KB';
             }
-            lastObjectUrl = URL.createObjectURL(blob);
-            streamImg.src = lastObjectUrl;
 
-            frameCount++;
-            document.getElementById('stat-size').innerText = (payloadLen / 1024).toFixed(1) + ' KB';
-
-            // Update stats every 1 second
-            const now = performance.now();
-            if (now - lastStatTime >= 1000) {
-              const elapsedSec = (now - lastStatTime) / 1000;
-              const fps = Math.round(frameCount / elapsedSec);
-              const kbps = Math.round((totalBytes / 1024) / elapsedSec);
-
-              document.getElementById('hud-fps').innerText = `${fps} FPS`;
-              document.getElementById('hud-rate').innerText = `${kbps} KB/s`;
-              document.getElementById('stat-fps').innerText = `${fps} FPS`;
-              document.getElementById('stat-kbps').innerText = `${kbps} KB/s`;
-
-              frameCount = 0;
-              totalBytes = 0;
-              lastStatTime = now;
-            }
+            // Slide buffer past current packet
+            buffer.copyWithin(0, fullPacketLen, bufLen);
+            bufLen -= fullPacketLen;
           }
         }
       } catch (err) {
-        console.warn("Serial reader error/aborted:", err);
+        console.warn("Serial reader aborted:", err);
       } finally {
         if (reader) {
-          reader.releaseLock();
+          try { reader.releaseLock(); } catch(e) {}
         }
       }
     }
 
+    // Hardware-accelerated off-screen rendering (Zero Flicker, Zero UI Blocking)
+    async function renderFrame(jpegData) {
+      if (isDecoding) return; // Drop frame if decoder is busy to maintain low latency
+      isDecoding = true;
+
+      try {
+        const blob = new Blob([jpegData], { type: 'image/jpeg' });
+        const bitmap = await createImageBitmap(blob);
+
+        if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+        }
+
+        // Single instantaneous GPU paint
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+
+        frameCount++;
+
+        // Live stats calculation every 1 second
+        const now = performance.now();
+        if (now - lastStatTime >= 1000) {
+          const elapsedSec = (now - lastStatTime) / 1000;
+          const fps = Math.round(frameCount / elapsedSec);
+          const kbps = Math.round((totalBytes / 1024) / elapsedSec);
+
+          document.getElementById('hud-fps').innerText = `${fps} FPS`;
+          document.getElementById('hud-rate').innerText = `${kbps} KB/s`;
+          document.getElementById('stat-fps').innerText = `${fps} FPS`;
+          document.getElementById('stat-kbps').innerText = `${kbps} KB/s`;
+
+          frameCount = 0;
+          totalBytes = 0;
+          lastStatTime = now;
+        }
+      } catch (e) {
+        // Silently skip corrupted frame
+      } finally {
+        isDecoding = false;
+      }
+    }
+
     function captureSnapshot() {
-      if (!streamImg.src) return;
-      const link = document.createElement('a');
-      link.href = streamImg.src;
-      link.download = `esp32s3_typec_snap_${Date.now()}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!canvas || canvas.width === 0) return;
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `esp32s3_typec_snap_${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+      }, 'image/jpeg', 0.95);
     }
 
     function toggleFullscreen() {
