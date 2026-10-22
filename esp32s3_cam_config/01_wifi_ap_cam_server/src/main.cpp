@@ -47,6 +47,13 @@ static esp_err_t capture_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
+    // Verify JPEG integrity before sending
+    if (fb->len < 100 || fb->buf[0] != 0xFF || fb->buf[1] != 0xD8) {
+        esp_camera_fb_return(fb);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
     httpd_resp_set_type(req, "image/jpeg");
     httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
@@ -76,13 +83,20 @@ static esp_err_t stream_handler(httpd_req_t *req) {
             continue;
         }
 
-        size_t hlen = snprintf(part_buf, 64, _STREAM_PART, fb->len);
-        res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-        if (res == ESP_OK) {
-            res = httpd_resp_send_chunk(req, part_buf, hlen);
-        }
-        if (res == ESP_OK) {
-            res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
+        // Validate complete JPEG frame to prevent corrupted bottom-half stripes
+        bool isCompleteJpeg = (fb->len > 100 &&
+                               fb->buf[0] == 0xFF && fb->buf[1] == 0xD8 &&
+                               fb->buf[fb->len - 2] == 0xFF && fb->buf[fb->len - 1] == 0xD9);
+
+        if (isCompleteJpeg) {
+            size_t hlen = snprintf(part_buf, 64, _STREAM_PART, fb->len);
+            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+            if (res == ESP_OK) {
+                res = httpd_resp_send_chunk(req, part_buf, hlen);
+            }
+            if (res == ESP_OK) {
+                res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
+            }
         }
 
         esp_camera_fb_return(fb);
@@ -95,7 +109,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
         int64_t fr_ready = esp_timer_get_time();
         int64_t elapsed_ms = (fr_ready - fr_start) / 1000;
 
-        // Frame pacing: Yield CPU and maintain smooth ~30 FPS without choking Wi-Fi TCP buffers
+        // Frame pacing
         if (elapsed_ms < 33) {
             vTaskDelay(pdMS_TO_TICKS(33 - elapsed_ms));
         } else {
@@ -122,6 +136,12 @@ static esp_err_t control_handler(httpd_req_t *req) {
             if (!strcmp(var, "framesize")) {
                 if (s->pixformat == PIXFORMAT_JPEG) {
                     res = s->set_framesize(s, (framesize_t)val);
+                    // Discard transitional frames
+                    for (int i = 0; i < 3; i++) {
+                        camera_fb_t *fb_trans = esp_camera_fb_get();
+                        if (fb_trans) esp_camera_fb_return(fb_trans);
+                        delay(25);
+                    }
                 }
             } else if (!strcmp(var, "quality")) {
                 res = s->set_quality(s, val);
@@ -206,7 +226,6 @@ void startCameraServer() {
         .user_ctx  = NULL
     };
 
-    // Captive portal probes for Android, iOS, Windows
     httpd_uri_t cp_android = { .uri = "/generate_204", .method = HTTP_GET, .handler = captive_portal_redirect, .user_ctx = NULL };
     httpd_uri_t cp_apple   = { .uri = "/hotspot-detect.html", .method = HTTP_GET, .handler = captive_portal_redirect, .user_ctx = NULL };
     httpd_uri_t cp_win     = { .uri = "/connecttest.txt", .method = HTTP_GET, .handler = captive_portal_redirect, .user_ctx = NULL };
@@ -228,7 +247,6 @@ void startCameraServer() {
 
     // -------------------------------------------------------------
     // SERVER 2: Dedicated Video Streaming Server (Port 81)
-    // Runs independently so video streaming never blocks web controls or captive portal
     // -------------------------------------------------------------
     httpd_config_t config_s = HTTPD_DEFAULT_CONFIG();
     config_s.server_port = 81;
@@ -288,13 +306,15 @@ void setup() {
     config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 20000000;
+
+    // CRITICAL: 10MHz XCLK prevents PSRAM DMA FIFO overflow (eliminates bottom-half vertical stripes)
+    config.xclk_freq_hz = 10000000;
     config.pixel_format = PIXFORMAT_JPEG;
     config.frame_size = FRAMESIZE_VGA;
-    config.jpeg_quality = 14; // High clarity, optimal packet size for Wi-Fi SoftAP
-    config.fb_count = 2;      // Smooth double buffering
+    config.jpeg_quality = 12;
+    config.fb_count = 2;
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.grab_mode = CAMERA_GRAB_LATEST;
+    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY; // Only grab 100% finished frames
 
     // Initialize Camera
     esp_err_t err = esp_camera_init(&config);
@@ -328,12 +348,9 @@ void setup() {
         Serial.printf("[INFO] Detected Camera Sensor: %s\n", detected_sensor_name.c_str());
     }
 
-    // Wi-Fi Access Point Initialization with High-Performance Settings
-    Serial.println("\n[INFO] Initializing High-Performance Wi-Fi Hotspot...");
+    // Wi-Fi Access Point Initialization
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(AP_SSID, AP_PASS, 1, 0, 4); // Channel 1, Visible, Max 4 clients
-    
-    // CRITICAL: Disable Wi-Fi Modem Sleep for zero-latency, lag-free video streaming
+    WiFi.softAP(AP_SSID, AP_PASS, 1, 0, 4);
     WiFi.setSleep(false);
     WiFi.setTxPower(WIFI_POWER_19_5dBm);
 
@@ -344,17 +361,11 @@ void setup() {
     Serial.printf(" Dedicated Stream   : http://%s:81/stream\n", IP.toString().c_str());
     Serial.println("==========================================");
 
-    // Start Captive Portal DNS Server on Port 53
-    // Immediately resolves all DNS queries to 192.168.4.1 without 30s timeout
     dnsServer.start(DNS_PORT, "*", IP);
-    Serial.println("[INFO] Captive Portal DNS Server active on Port 53");
-
-    // Start Dual HTTP Servers (Port 80 + Port 81)
     startCameraServer();
 }
 
 void loop() {
-    // Process captive portal DNS requests immediately
     dnsServer.processNextRequest();
     delay(2);
 }

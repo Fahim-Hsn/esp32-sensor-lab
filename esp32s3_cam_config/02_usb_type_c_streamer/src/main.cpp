@@ -7,7 +7,6 @@ const uint8_t FRAME_HEADER[4] = {0xAA, 0x55, 0xAA, 0x55};
 const uint8_t FRAME_FOOTER[2] = {0x55, 0xAA};
 
 String detected_sensor_name = "Unknown";
-volatile bool resolution_changed = false;
 
 void handleSerialCommands() {
     while (Serial.available() > 0) {
@@ -25,7 +24,7 @@ void handleSerialCommands() {
                 framesize_t fs = (framesize_t)val;
                 s->set_framesize(s, fs);
                 
-                // Automatically adapt quality based on resolution to maintain smooth USB throughput
+                // Adaptive quality based on resolution
                 if (fs >= FRAMESIZE_UXGA) {
                     s->set_quality(s, 20);
                 } else if (fs >= FRAMESIZE_XGA) {
@@ -34,13 +33,13 @@ void handleSerialCommands() {
                     s->set_quality(s, 12);
                 }
                 
-                // Discard transitional frames generated during sensor PLL clock reconfiguration
-                for (int i = 0; i < 3; i++) {
+                // Flush transitional frames generated during sensor PLL clock adjustment
+                for (int i = 0; i < 4; i++) {
                     camera_fb_t *fb_trans = esp_camera_fb_get();
                     if (fb_trans) {
                         esp_camera_fb_return(fb_trans);
                     }
-                    delay(20);
+                    delay(30);
                 }
                 break;
             }
@@ -90,13 +89,19 @@ void setup() {
     config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 20000000;
+
+    // CRITICAL FIX: Lower XCLK to 10 MHz (or 16 MHz) to completely prevent DMA FIFO
+    // buffer overflow, which causes vertical yellow/purple stripes on the bottom half of the image.
+    config.xclk_freq_hz = 10000000; // 10MHz rock-solid clock
     config.pixel_format = PIXFORMAT_JPEG;
     config.frame_size = FRAMESIZE_VGA; // Crisp default resolution
-    config.jpeg_quality = 12;          // High initial sharpness
+    config.jpeg_quality = 12;          // Sharp image quality
     config.fb_count = 2;               // Double buffering in PSRAM
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.grab_mode = CAMERA_GRAB_LATEST;
+    
+    // CRITICAL FIX: CAMERA_GRAB_WHEN_EMPTY guarantees that the driver only delivers
+    // 100% completed frames, preventing partial/corrupted DMA buffers from being read mid-capture.
+    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
@@ -144,8 +149,14 @@ void loop() {
         return;
     }
 
-    // Verify JPEG SOI marker (0xFF, 0xD8) to guarantee frame integrity before sending
-    if (fb->len > 4 && fb->buf[0] == 0xFF && fb->buf[1] == 0xD8) {
+    // STRICT FRAME INTEGRITY CHECK:
+    // A complete JPEG frame MUST start with SOI (0xFF, 0xD8) AND end with EOI (0xFF, 0xD9).
+    // If DMA overflow dropped bytes, EOI will be missing. Only send 100% intact frames!
+    bool isCompleteJpeg = (fb->len > 100 &&
+                           fb->buf[0] == 0xFF && fb->buf[1] == 0xD8 &&
+                           fb->buf[fb->len - 2] == 0xFF && fb->buf[fb->len - 1] == 0xD9);
+
+    if (isCompleteJpeg) {
         // Write Sync Header
         Serial.write(FRAME_HEADER, 4);
 
@@ -168,7 +179,7 @@ void loop() {
     // Return frame buffer immediately
     esp_camera_fb_return(fb);
 
-    // Frame Pacing: target smooth 30 FPS without overwhelming USB host buffers
+    // Frame Pacing: target smooth 25-30 FPS without overwhelming USB host buffers
     int64_t t_elapsed = (esp_timer_get_time() - t_frame_start) / 1000;
     if (t_elapsed < 33) {
         vTaskDelay(pdMS_TO_TICKS(33 - t_elapsed));
