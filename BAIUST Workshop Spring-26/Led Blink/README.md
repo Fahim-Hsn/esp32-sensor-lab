@@ -31,5 +31,5 @@ Refer to `esp32_led_circuit.png` for the visual guide:
 4. Click the **Upload** button.
 
 ## Troubleshooting
-- If the code fails to upload, press and hold the **BOOT** button on the ESP32 until the status changes to "Writing...".
-- Ensure the LED is oriented correctly (Long leg is positive).
+- If the code fails to upload, press and hold the **BOOT** button on the ESP32 until the status changes to "Writing..."
+- Ensure the LED is oriented correctly (Long leg is positive)
